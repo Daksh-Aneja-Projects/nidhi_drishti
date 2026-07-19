@@ -1,0 +1,13 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "db"
+allowBuilds:
+  # esbuild ships a platform binary that its install script places on disk.
+  # vitest depends on it, so the build has to run.
+  # core-js only postinstalls a funding notice. Nothing needs it to run.
+  core-js: false
+  esbuild: true
+  # sharp is Next's image optimiser and the renderer behind the generated share
+  # cards, and it needs its platform binary installed.
+  sharp: true

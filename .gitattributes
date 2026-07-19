@@ -1,0 +1,13 @@
+# Normalise line endings so a checkout on Windows does not appear to have
+# rewritten every file, and so migration checksums stay stable across platforms.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+pnpm-lock.yaml linguist-generated=true
+uv.lock linguist-generated=true

@@ -1,0 +1,96 @@
+# Local development stack.
+#
+# Ports are deliberately shifted off the defaults (5433, 6380, 9002/9003) so
+# this stack coexists with any Postgres, Redis or MinIO already running on the
+# machine rather than failing to bind or, worse, silently connecting to the
+# wrong database.
+
+name: nidhi-drishti
+
+services:
+  postgres:
+    # pgvector image rather than plain postgres:16: evidence retrieval needs the
+    # vector type at migration time, so it has to be present in the base image.
+    image: pgvector/pgvector:pg16
+    container_name: nidhi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nidhi
+      POSTGRES_PASSWORD: nidhi
+      POSTGRES_DB: nidhi
+      # Deterministic collation, so ORDER BY on ministry names does not depend
+      # on the host's locale.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nidhi -d nidhi"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+
+  redis:
+    image: redis:7-alpine
+    container_name: nidhi-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    # Raw artifact store. Every fetched PDF, CSV and HTML page is written here
+    # content-addressed and never deleted: it is the evidence trail behind every
+    # published figure (docs/08 section 5).
+    image: minio/minio:latest
+    container_name: nidhi-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: nidhiminio
+      MINIO_ROOT_PASSWORD: nidhiminio123
+    ports:
+      - "9002:9000"   # S3 API
+      - "9003:9001"   # console
+    volumes:
+      - minio_data:/data
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: creates the artifact bucket and enables versioning, so an
+  # accidental overwrite of a stored artifact is recoverable.
+  minio-init:
+    image: minio/mc:latest
+    container_name: nidhi-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 nidhiminio nidhiminio123 &&
+      mc mb --ignore-existing local/nidhi-raw &&
+      mc version enable local/nidhi-raw &&
+      echo 'artifact bucket ready'
+      "
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

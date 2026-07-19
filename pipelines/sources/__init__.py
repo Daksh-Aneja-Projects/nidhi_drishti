@@ -1,0 +1,42 @@
+"""One package per source declared in db/seed/02_source_registry.sql.
+
+Every module here exposes:
+
+* ``SOURCE_ID``   the registry id it writes for;
+* ``URLS``        one constant holding every entry point, so a reorganised
+                  portal is a one-place edit rather than a hunt through the file;
+* a pydantic row schema, which is the drift tripwire;
+* ``run(...)``    the seven-step pipeline from docs/02 section 5.
+
+The parsing functions are importable on their own and take bytes or strings, so
+the test suite exercises the real logic against fixture documents and never
+touches the network.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from importlib import import_module
+from typing import Any
+
+#: Module path per pipeline name. Imported lazily so that a broken dependency in
+#: one source cannot stop every other pipeline from running.
+SOURCE_MODULES: dict[str, str] = {
+    "union_budget": "pipelines.sources.union_budget.pipeline",
+    "cga_monthly": "pipelines.sources.cga_monthly.pipeline",
+    "pfms_published": "pipelines.sources.pfms_published.pipeline",
+    "cppp_tenders": "pipelines.sources.cppp_tenders.pipeline",
+    "gem_stats": "pipelines.sources.gem_stats.pipeline",
+    "pib_releases": "pipelines.sources.pib_releases.pipeline",
+    "ogd_datasets": "pipelines.sources.ogd_datasets.pipeline",
+    "obi_historical": "pipelines.sources.obi_historical.pipeline",
+    "sansad_qa": "pipelines.sources.sansad_qa.pipeline",
+}
+
+
+def load_runner(name: str) -> Callable[..., Any]:
+    """Return the ``run`` callable for a pipeline name."""
+    if name not in SOURCE_MODULES:
+        raise KeyError(f"Unknown pipeline {name!r}. Known: {', '.join(sorted(SOURCE_MODULES))}")
+    module = import_module(SOURCE_MODULES[name])
+    return module.run  # type: ignore[no-any-return]

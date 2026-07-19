@@ -1,0 +1,33 @@
+{
+  "name": "@nidhi/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nidhi/core": "workspace:*",
+    "@nidhi/db": "workspace:*",
+    "echarts": "^5.5.1",
+    "echarts-for-react": "^3.0.2",
+    "lucide-react": "^0.468.0",
+    "next": "^15.1.3",
+    "posthog-js": "^1.203.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

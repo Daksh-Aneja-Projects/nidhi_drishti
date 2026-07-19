@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typescript:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # pgvector rather than plain postgres: the migrations create the vector
+        # type, so the extension has to exist in the image.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: nidhi
+          POSTGRES_PASSWORD: nidhi
+          POSTGRES_DB: nidhi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nidhi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgres://nidhi:nidhi@localhost:5432/nidhi
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Migrations run against a real Postgres so a broken view definition or a
+      # bad constraint fails here rather than on a deployment.
+      - name: Apply migrations and seed
+        run: |
+          pnpm --filter @nidhi/db migrate
+          pnpm --filter @nidhi/db seed
+
+      - name: Data invariants
+        run: pnpm --filter @nidhi/db check
+
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --frozen || uv sync
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      # No network and no API key: the pipeline and agent suites must pass on
+      # fixtures alone, which is also what keeps them fast enough to run often.
+      - name: Tests
+        run: uv run pytest -q

@@ -1,0 +1,29 @@
+{
+  "name": "nidhi-drishti",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@11.13.1",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @nidhi/web dev",
+    "build": "pnpm -r build",
+    "start": "pnpm --filter @nidhi/web start",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "db:up": "docker compose -f infra/docker-compose.yml up -d",
+    "db:down": "docker compose -f infra/docker-compose.yml down",
+    "db:migrate": "pnpm --filter @nidhi/db migrate",
+    "db:seed": "pnpm --filter @nidhi/db seed",
+    "db:refresh": "pnpm --filter @nidhi/db refresh",
+    "db:reset": "pnpm --filter @nidhi/db reset",
+    "bootstrap": "pnpm db:up && pnpm db:migrate && pnpm db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

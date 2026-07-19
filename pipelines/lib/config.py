@@ -84,7 +84,7 @@ class ScraperSettings:
     respect_robots: bool
 
     def __post_init__(self) -> None:
-        if not self.user_agent or "http" == self.user_agent:
+        if not self.user_agent or self.user_agent == "http":
             raise ConfigError("SCRAPER_USER_AGENT is mandatory and must name a contact.")
         if "(" not in self.user_agent or ")" not in self.user_agent:
             raise ConfigError(

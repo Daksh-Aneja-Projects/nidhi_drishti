@@ -37,7 +37,6 @@ from pipelines.lib.runs import PipelineRun
 from pipelines.lib.validation import validate_rows
 from pipelines.parsers.fy_dates import ReportingPeriod, parse_month_label
 from pipelines.parsers.inr_amounts import (
-    CRORE,
     AmountParseError,
     Unit,
     parse_amount_cr,
@@ -337,7 +336,11 @@ def run(
 
             # 7. record_run happens on context exit.
             run_ctx.metric(facts_written=outcome.facts_written, unresolved=len(unresolved))
-            outcome.status = "drift_alert" if findings else "ok"
+
+        # Status comes from the run context, which has just written the
+        # pipeline_run row. Informational findings are recorded; only warn and
+        # high make a run a drift alert.
+        outcome.status = run_ctx.status
     finally:
         if owns_client:
             http.close()

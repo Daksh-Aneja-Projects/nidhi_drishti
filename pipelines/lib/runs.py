@@ -32,7 +32,7 @@ import structlog
 from pipelines.lib import alerting
 from pipelines.lib.config import Settings, require_known_source
 from pipelines.lib.db import finish_pipeline_run, recent_run_metrics, start_pipeline_run
-from pipelines.lib.drift import DriftFinding, RunMetrics, should_abort
+from pipelines.lib.drift import DriftFinding, RunMetrics, actionable, should_abort
 
 log = structlog.get_logger(__name__)
 
@@ -114,10 +114,13 @@ class PipelineRun:
             # to know, and the scheduler decides whether to retry.
             return False
 
-        if self.findings:
+        # Only warn and high findings make a run a drift alert. Informational
+        # ones are kept in the metrics for the ops page and nowhere else.
+        notable = actionable(self.findings)
+        if notable:
             self.status = "drift_alert"
             alerting.alert_drift(
-                self.source_id, self.findings, run_id=self.run_id, settings=self.settings
+                self.source_id, notable, run_id=self.run_id, settings=self.settings
             )
         else:
             self.status = "ok"

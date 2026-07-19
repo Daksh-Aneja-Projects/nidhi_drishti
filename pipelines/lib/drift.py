@@ -252,6 +252,17 @@ def worst_severity(findings: Sequence[DriftFinding]) -> Severity | None:
     return max((f.severity for f in findings), key=lambda s: order[s])
 
 
+def actionable(findings: Sequence[DriftFinding]) -> list[DriftFinding]:
+    """Findings that a human should look at.
+
+    ``info`` findings are recorded in run metrics but do not make a run a drift
+    alert. A first run having no baseline, or three rows out of a thousand
+    failing to parse, is information; treating it as an alert trains everyone to
+    ignore the alerts that matter.
+    """
+    return [finding for finding in findings if finding.severity in {"warn", "high"}]
+
+
 def should_abort(findings: Sequence[DriftFinding]) -> bool:
     """A high-severity finding stops the canonical write.
 

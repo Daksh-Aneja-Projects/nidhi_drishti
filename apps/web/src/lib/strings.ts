@@ -407,6 +407,194 @@ export const strings = {
     corrections: 'Report an error in a figure',
     builtWith: 'Compiled from public sources listed on the data and sources page.',
   },
+
+  apiDocs: {
+    title: 'API',
+    eyebrow: 'For journalists, researchers and developers',
+    lede:
+      'A read only interface to the same figures the pages show. Every response carries the freshness of its sources and the site disclaimer, so a machine consumer gets the context a reader gets.',
+    baseTitle: 'Base address',
+    baseBody: 'All endpoints answer to GET only, return JSON, and need no key.',
+    endpointsTitle: 'Endpoints',
+    endpointsPath: 'Path',
+    endpointsPurpose: 'Returns',
+    endpointsParams: 'Parameters',
+    envelopeTitle: 'Response shape',
+    envelopeBody:
+      'Every successful response is an object with a data field and a meta field. The meta field carries the financial year, the moment the response was assembled, whether the deployment is serving illustrative figures, the freshness of each source, and the disclaimer.',
+    absenceTitle: 'Absent figures',
+    absenceBody:
+      'A figure the source does not publish is returned as null. Null means not reported. It does not mean zero, and it must not be added up as zero.',
+    stagesTitle: 'Stages are separate fields',
+    stagesBody:
+      'Budget estimate, revised estimate, sanction, release and utilisation are five different things and are never merged into one number. Read the methodology page before combining them.',
+    rateTitle: 'Rate limit',
+    rateBody:
+      'Requests are counted per address per minute. Over the allowance the interface answers with status 429 and a Retry-After header saying how long to wait. The remaining allowance is on every response.',
+    errorsTitle: 'Errors',
+    errorsBody:
+      'A failed request returns an object with an error field carrying a code and a message. A malformed financial year gives status 400. An unknown ministry or scheme gives status 404. A store that cannot be read gives status 503.',
+    exportsTitle: 'Spreadsheet exports',
+    exportsBody:
+      'Export routes return comma separated values with a commented preamble naming every underlying source. Keep the preamble attached when you republish the file.',
+    termsTitle: 'Use and attribution',
+    termsBody:
+      'Attribute the publishing institutions listed on the data and sources page, and cite the document dates carried in the response. This project is not affiliated with the Government of India and is not a substitute for the official record.',
+    healthTitle: 'Availability',
+    healthBody:
+      'A health endpoint reports the database, the cache and the age of the freshest source, for anyone running a monitor against this deployment.',
+  },
+
+  methodology: {
+    title: 'Methodology',
+    eyebrow: 'How these figures are made',
+    lede:
+      'What we fetch, how it becomes a number on a page, what the rules test for, and the things this data cannot tell you.',
+    pipelineTitle: 'How a figure reaches this site',
+    pipelineSteps: [
+      'A fetcher downloads the published document from the institution that issued it, at the pace that institution publishes.',
+      'The document is stored exactly as fetched, hashed and never edited, so any figure can be traced back to the page it came from.',
+      'A parser reads the tables and writes rows into a staging area with no interpretation applied.',
+      'Every row is checked against a schema. A source that changes shape raises an alert and writes nothing, rather than writing something plausible and wrong.',
+      'Entity resolution maps the names the document uses to stable ministry and scheme identifiers.',
+      'The canonical tables record each figure with its stage, its period, and the source record it came from. Aggregates are computed from those tables and never stored by hand.',
+    ],
+    stagesTitle: 'Five stages, not one number',
+    stagesBody:
+      'Allocation is not spending. A rupee can be budgeted, revised, sanctioned, released, and only then reported as utilised, and it can stop at any of those points. Combining them produces a figure that looks authoritative and means nothing, so they are kept apart everywhere: in the database, in the interface, and in the API.',
+    rulesTitle: 'The rules behind the signals',
+    rulesBody:
+      'Signals are produced by published rules over official figures, not by a model forming an opinion. Each rule states what it tests for and what it does not establish. Every signal above the lowest severity is reviewed by a person before it appears in public.',
+    rulesLimitTitle: 'What the rules cannot do',
+    rulesLimitBody:
+      'The rules work on what is published. They cannot see money that moves outside the accounts they read, they cannot tell a delayed payment from a delayed accounting entry, and they compare entities whose spending patterns are legitimately different. A signal is an invitation to look, never a finding.',
+    limitsTitle: 'What this data cannot tell you',
+    limits: [
+      'Government treasury movements are not published as they happen. The most current official actuals are the monthly accounts of the Controller General of Accounts, which appear about a month after the month they cover, and provisional figures are revised later.',
+      'Utilisation certificates are largely not published per scheme, so utilisation coverage is partial and comes from a mix of accounts, parliament answers and scheme portals.',
+      'Spending by states on centrally sponsored schemes is visible only as far as single nodal agency reporting makes it visible, and confidence is labelled accordingly.',
+      'Ministry allocations do not add up to the national total. The difference is mostly transfers to states and items that sit outside a ministry demand, and it is shown rather than hidden.',
+      'Procurement matching relies on organisation names in tender records, which are inconsistent. A missing match does not mean a missing tender.',
+    ],
+    correctionsTitle: 'Corrections',
+    correctionsBody:
+      'If a figure here disagrees with the source document, the source document is right and we want to know. Reports are logged, and a correction that changes a published figure is recorded with what changed and when.',
+    analyticsTitle: 'What is measured about usage',
+    analyticsBody:
+      'Usage measurement is anonymous. There are no accounts, no identifiers, no advertising trackers, and search text is never sent, only its length. Sessions that signal Do Not Track or Global Privacy Control are not measured at all. The complete list of what is collected is below.',
+    analyticsEventsTitle: 'Events collected',
+    stageColumn: 'Stage',
+    meaningColumn: 'What it means',
+  },
+
+  sourcesPage: {
+    title: 'Data and sources',
+    eyebrow: 'Attribution',
+    lede:
+      'Every source this site reads, how it is accessed, how often it is checked, and the terms it is published under.',
+    tier: 'Tier',
+    cadence: 'Checked',
+    method: 'Access',
+    format: 'Format',
+    licence: 'Licence',
+    accessNote: 'Access note',
+    homepage: 'Publisher',
+    freshness: 'Last fetched',
+    empty: 'No sources are registered in this deployment yet.',
+    tierHelp:
+      'Tier one sources carry the fiscal figures. Tier two sources are the activity signals used for verification. Tier three is reference data.',
+    licenceNote:
+      'Government data is reused under the terms each publisher states, with attribution. Where a publisher asked for a different access route, the note says so.',
+  },
+
+  corrections: {
+    title: 'Report an error in a figure',
+    eyebrow: 'Corrections',
+    lede:
+      'If something here disagrees with the source document, tell us. Corrections are logged and the source document wins.',
+    entityTypeLabel: 'What is it about',
+    entityTypeAny: 'Not sure',
+    entityIdLabel: 'Ministry or scheme identifier, if you know it',
+    fyLabel: 'Financial year, if it applies',
+    noteLabel: 'What is wrong',
+    noteHelp:
+      'Say which figure, what it shows, and what the source document says instead. A link to the document helps most of all.',
+    contactLabel: 'Contact, if you would like a reply',
+    contactHelp:
+      'Optional. Used only to reply about this report, and nothing else is collected.',
+    submit: 'Send report',
+    successTitle: 'Report received',
+    successBody:
+      'Thank you. Reports are reviewed against the source document, and a figure that turns out to be wrong is corrected and logged.',
+    errorEmptyTitle: 'Nothing was sent',
+    errorEmptyBody: 'Describe what is wrong with the figure and send the report again.',
+    errorFailedTitle: 'The report could not be saved',
+    errorFailedBody: 'Try again shortly. Nothing you typed was stored.',
+    policyTitle: 'What happens next',
+    policyBody:
+      'Reports are checked against the document the figure came from. Corrections that change a published figure are recorded with what changed and when.',
+  },
+
+  compare: {
+    title: 'Compare',
+    eyebrow: 'Side by side',
+    lede:
+      'Put up to four ministries or schemes beside each other on the same measures. The selection is in the address, so a comparison can be shared as a link.',
+    addMinistry: 'Add a ministry',
+    addScheme: 'Add a scheme',
+    remove: 'Remove',
+    clear: 'Clear the selection',
+    full: 'Four entities is the limit. Remove one to add another.',
+    empty: 'Nothing is selected yet.',
+    emptyBody: 'Choose a ministry or a scheme from the lists to start a comparison.',
+    metric: 'Measure',
+    mixedNote:
+      'Ministries and schemes report different stages, so a measure that one side does not publish shows as not reported.',
+  },
+
+  ops: {
+    title: 'Operations',
+    eyebrow: 'Internal',
+    lede: 'Pipeline runs, source staleness, parse errors and the invariant checks.',
+    runsTitle: 'Recent pipeline runs',
+    runsEmpty: 'No pipeline run has been recorded yet.',
+    runStatus: 'Status',
+    runSource: 'Source',
+    runStarted: 'Started',
+    runDuration: 'Duration',
+    runRows: 'Rows',
+    runErrors: 'Parse errors',
+    statusTitle: 'Runs by status',
+    stalenessTitle: 'Source staleness',
+    stalenessEmpty: 'No source has been fetched yet.',
+    parseErrorsTitle: 'Parse errors by source',
+    parseErrorsEmpty: 'No parse errors have been recorded in the runs shown.',
+    invariantsTitle: 'Invariant checks',
+    invariantsEmpty: 'Every invariant check passed.',
+    invariant: 'Check',
+    detail: 'Detail',
+    entity: 'Entity',
+    severity: 'Severity',
+    unavailable: 'The operations view could not read the database.',
+  },
+
+  admin: {
+    reviewTitle: 'Signal review',
+    reviewEyebrow: 'Internal',
+    reviewLede:
+      'Signals awaiting review. Nothing here is public until it is approved, and the reviewer is recorded against the decision.',
+    queueEmpty: 'The review queue is empty.',
+    queueEmptyBody: 'Every signal raised so far has been reviewed.',
+    approve: 'Approve',
+    reject: 'Reject',
+    noteLabel: 'Review note',
+    notePlaceholder: 'Why this decision, for the record',
+    raised: 'Raised',
+    metric: 'Rule figures',
+    evidence: 'Evidence',
+    unavailableTitle: 'Not available',
+    unavailableBody: 'This address is not available.',
+  },
 } as const;
 
 export type Strings = typeof strings;

@@ -60,6 +60,7 @@ select = [
     "I",   # isort
     "UP",  # pyupgrade
     "B",   # bugbear
+    "BLE", # blind except: every one has to be justified in a comment
     "SIM", # simplify
     "TID", # tidy imports
     "RUF",
@@ -73,7 +74,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"pipelines/tests/*" = ["S101"]
+# Nested `with` in tests is deliberate: keeping pytest.raises on its own line
+# makes it obvious which statement is expected to raise.
+"pipelines/tests/*" = ["S101", "SIM117"]
 
 [tool.ruff.format]
 quote-style = "double"

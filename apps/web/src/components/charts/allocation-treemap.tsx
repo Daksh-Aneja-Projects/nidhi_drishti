@@ -46,6 +46,11 @@ interface AllocationTreemapProps {
 export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemapProps) {
   const router = useRouter();
 
+  const byName = useMemo(
+    () => new Map(items.map((item) => [item.name, item])),
+    [items],
+  );
+
   const option = useMemo<EChartsOption>(() => {
     return {
       ...baseChartOption,
@@ -53,7 +58,8 @@ export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemap
       tooltip: {
         ...baseChartOption.tooltip,
         formatter: (params: unknown) => {
-          const data = (params as { data?: TreemapItem }).data;
+          const name = (params as { name?: string }).name ?? '';
+          const data = byName.get(name);
           if (!data) return '';
           return [
             `<strong>${escapeHtml(data.name)}</strong>`,
@@ -89,20 +95,22 @@ export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemap
             position: 'insideTopLeft',
             padding: [2, 4, 0, 4],
             formatter: (params: unknown) => {
-              const data = (params as { data?: TreemapItem }).data;
+              const name = (params as { name?: string }).name ?? '';
+              const data = byName.get(name);
               return data ? `${data.name}\n${data.authorityText}` : '';
             },
           },
           upperLabel: { show: false },
           data: items.map((item) => ({
-            ...item,
+            name: item.name,
+            value: item.value,
             itemStyle: { color: item.color },
             label: { color: labelColorOn(item.color) },
           })),
         },
       ],
     };
-  }, [items]);
+  }, [items, byName]);
 
   const table = useMemo(
     () => ({

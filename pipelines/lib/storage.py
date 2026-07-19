@@ -138,7 +138,7 @@ def _exists(store: ObjectStore, bucket: str, key: str) -> bool:
     try:
         store.head_object(Bucket=bucket, Key=key)
         return True
-    except Exception as exc:  # noqa: BLE001 - botocore raises a generated class
+    except Exception as exc:
         name = type(exc).__name__
         if name in {"ClientError", "NoSuchKey", "404"} or "Not Found" in str(exc):
             return False

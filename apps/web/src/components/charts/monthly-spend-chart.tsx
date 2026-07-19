@@ -34,13 +34,15 @@ interface MonthlySpendChartProps {
 }
 
 /** Hatching means uncertainty systemwide. Provisional months get it too. */
-const PROVISIONAL_DECAL = {
-  symbol: 'rect',
-  dashArrayX: [1, 0],
-  dashArrayY: [2, 4],
-  rotation: -Math.PI / 4,
-  color: 'rgba(239, 241, 238, 0.85)',
-} as const;
+function provisionalDecal() {
+  return {
+    symbol: 'rect',
+    dashArrayX: [1, 0],
+    dashArrayY: [2, 4],
+    rotation: -Math.PI / 4,
+    color: 'rgba(239, 241, 238, 0.85)',
+  };
+}
 
 function amountText(value: number | null): string {
   return value === null ? strings.common.notReported : formatINRCr(value);
@@ -115,8 +117,8 @@ export function MonthlySpendChart({
           data: points.map((point) => ({
             value: point.monthly,
             itemStyle: point.isProvisional
-              ? { color: chartTheme.behind, decal: PROVISIONAL_DECAL }
-              : { color: chartTheme.behind },
+              ? { color: chartTheme.behind as string, decal: provisionalDecal() }
+              : { color: chartTheme.behind as string },
           })),
         },
       ],

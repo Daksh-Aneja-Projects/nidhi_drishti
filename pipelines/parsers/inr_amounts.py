@@ -30,7 +30,7 @@ import unicodedata
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Final, TypeAlias
+from typing import Final
 
 
 class AmountParseError(ValueError):
@@ -67,7 +67,10 @@ class _NotReported:
 
 
 NOT_REPORTED: Final = _NotReported()
-AmountResult: TypeAlias = "Decimal | _NotReported"
+
+#: Either a real amount in crore, or an explicit "the source does not report
+#: this". Callers must narrow before doing arithmetic, which is the point.
+type AmountResult = Decimal | _NotReported
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,6 +285,12 @@ def parse_amount_cr(
         working = _RUPEE_PATTERN.sub(" ", working)
 
     working = " ".join(working.split())
+
+    # The unit can sit outside the brackets: "(2,500) lakh". Re-check now that
+    # the unit and currency words have been removed.
+    if working.startswith("(") and working.endswith(")"):
+        negative = not negative
+        working = working[1:-1].strip()
 
     if working in {"", "-", "+"}:
         raise AmountParseError(f"No number found in {original!r}.", original)

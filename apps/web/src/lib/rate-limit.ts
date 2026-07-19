@@ -47,7 +47,7 @@ function parseReply(buffer: Buffer, offset: number): { value: RedisValue; next: 
   if (offset >= buffer.length) return null;
   const lineEnd = buffer.indexOf('\r\n', offset);
   if (lineEnd === -1) return null;
-  const kind = String.fromCharCode(buffer[offset]);
+  const kind = String.fromCharCode(buffer[offset] ?? 0);
   const line = buffer.toString('utf8', offset + 1, lineEnd);
   const afterLine = lineEnd + 2;
 

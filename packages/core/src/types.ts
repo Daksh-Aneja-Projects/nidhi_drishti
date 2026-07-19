@@ -78,6 +78,15 @@ export type ExpenditureHead = 'revenue' | 'capital' | 'total';
 
 export type EntityType = 'ministry' | 'scheme' | 'national';
 
+/**
+ * The single entity id used for national aggregates.
+ *
+ * Exported rather than written as a literal at each call site: the national
+ * rollup is joined by string in several views and queries, and a typo would
+ * silently produce an empty national page rather than an error.
+ */
+export const NATIONAL_ENTITY_ID = 'india';
+
 export interface Ministry {
   ministryId: string;
   name: string;

@@ -8,6 +8,7 @@
  */
 
 import {
+  NATIONAL_ENTITY_ID,
   NOT_REPORTED,
   parseAmountCr,
   type Amount,
@@ -370,6 +371,11 @@ export async function getMonthlySpend(
     isRevisionArtifact: row.is_revision_artifact,
     provenance: provenance.get(Number(row.source_record_id)) ?? null,
   }));
+}
+
+/** Monthly national expenditure. Wraps the national entity id so pages do not carry it. */
+export async function getNationalMonthlySpend(fy: string): Promise<MonthlySpendPoint[]> {
+  return getMonthlySpend('national', NATIONAL_ENTITY_ID, fy);
 }
 
 /* ------------------------------------------------------------------ *

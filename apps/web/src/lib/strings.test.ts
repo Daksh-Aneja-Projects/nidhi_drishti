@@ -76,17 +76,28 @@ describe('user-facing copy', () => {
   });
 
   it('keeps labels in sentence case rather than title case', () => {
-    // Checks the short nav and common labels, where title case creeps in.
-    // A label is suspect when a non-first word starts with a capital and is not
-    // an acronym or a proper noun.
+    // Title case creeps into short labels. A word is suspect when it starts a
+    // capital, is not the first word of its sentence, and is not a proper noun.
+    //
+    // Sentences are split first: a capital after a full stop is correct
+    // sentence case, not a title-case slip. Help text in these groups is prose
+    // and legitimately runs to several sentences.
     const properNouns = ['CSV', 'API', 'AI', 'India', 'Nidhi', 'Drishti', 'Hindi'];
     const labels = [...Object.entries(strings.nav), ...Object.entries(strings.common)];
-    const offenders = labels.filter(([, text]) => {
-      const words = text.split(' ').slice(1);
-      return words.some(
-        (word) => /^[A-Z]/.test(word) && !properNouns.some((noun) => word.startsWith(noun)),
-      );
-    });
+
+    const offenders = labels.filter(([, text]) =>
+      text
+        .split(/(?<=[.:?!])\s+/)
+        .some((sentence) =>
+          sentence
+            .trim()
+            .split(/\s+/)
+            .slice(1)
+            .some(
+              (word) => /^[A-Z]/.test(word) && !properNouns.some((noun) => word.startsWith(noun)),
+            ),
+        ),
+    );
     expect(offenders).toEqual([]);
   });
 });

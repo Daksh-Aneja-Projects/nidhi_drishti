@@ -326,7 +326,11 @@ def run(
                 f"{as_published_on.isoformat()}."
             )
             run_ctx.metric(facts_written=outcome.facts_written)
-            outcome.status = "drift_alert" if findings else "ok"
+
+        # Status comes from the run context, which has just written the
+        # pipeline_run row. Informational findings are recorded; only warn and
+        # high make a run a drift alert.
+        outcome.status = run_ctx.status
     finally:
         if owns_client:
             http.close()

@@ -285,7 +285,7 @@ def _finalise(
             log.warning("pdf.assist_failed", page=page_number, error=str(exc))
             assisted = None
         if assisted:
-            assisted_rows = [[_clean(cell) for cell in row] for row in assisted]
+            assisted_rows: Table = [[_clean(cell) for cell in row] for row in assisted]
             assisted_confidence = score_table(assisted_rows)
             # Only accept the assist if it is actually better. An agent that
             # returns a worse grid must not be able to overwrite a usable one.
@@ -378,7 +378,6 @@ def is_total_row(label: str) -> bool:
     normalised = re.sub(r"[^a-z ]", "", label.lower()).strip()
     return normalised in {
         "total",
-        "grand total",
         "grand total",
         "total expenditure",
         "total receipts",

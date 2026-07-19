@@ -162,7 +162,7 @@ def month_bounds(year: int, month: int) -> tuple[date, date]:
 
 def fy_months(fy: str) -> list[date]:
     """The twelve first-of-month dates of an FY, April first."""
-    return [date(*month_from_fy_index(fy, index)) for index in range(1, 13)]
+    return [date(*month_from_fy_index(fy, index), 1) for index in range(1, 13)]
 
 
 def is_within_fy(day: date, fy: str) -> bool:

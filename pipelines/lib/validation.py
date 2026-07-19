@@ -9,14 +9,12 @@ looks fine and is wrong. Everything here exists to make that impossible.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, TypeVar
+from typing import Any
 
 import structlog
 from pydantic import BaseModel, ValidationError
 
 log = structlog.get_logger(__name__)
-
-ModelT = TypeVar("ModelT", bound=BaseModel)
 
 #: How many offending rows go into the alert body. The full list stays on the
 #: exception for the parse_error queue.
@@ -71,7 +69,7 @@ class SchemaDriftError(Exception):
         return "\n".join(lines)
 
 
-def validate_rows(
+def validate_rows[ModelT: BaseModel](
     rows: Sequence[Mapping[str, Any]],
     schema: type[ModelT],
     *,

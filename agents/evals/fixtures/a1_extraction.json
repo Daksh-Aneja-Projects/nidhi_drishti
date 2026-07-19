@@ -1,0 +1,296 @@
+{
+  "_comment": "FIXTURES - synthetic evaluation data for A1 extraction assist. The page text is written by hand in the style of Union Budget expenditure statements and CGA monthly accounts. No figure here is a real published figure and none of it may be ingested or displayed.",
+  "suite": "a1_extraction",
+  "cases": [
+    {
+      "id": "a1-001-clean-be-re-table",
+      "page": {
+        "source_id": "union_budget",
+        "document_title": "FIXTURE Expenditure Budget, Statement of Budget Estimates",
+        "page_number": 41,
+        "fy": "FY2026",
+        "page_text": "(In Rs. crore)\nDemand No. 34  Ministry of Jal Shakti\n                                     2024-2025 Actuals   2025-2026 Budget Estimates   2025-2026 Revised Estimates\nDepartment of Water Resources            18,420.00              21,000.00                    19,750.00",
+        "parser_hint": "Header row spans three merged cells; the deterministic parser could not align columns."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "ministry", "entity_label_as_printed": "Department of Water Resources", "stage": "BE", "head": "total", "amount_as_printed": "21,000.00", "unit_as_printed": "crore", "confidence": 0.95, "source_cell_text": "21,000.00"},
+          {"entity_type": "ministry", "entity_label_as_printed": "Department of Water Resources", "stage": "RE", "head": "total", "amount_as_printed": "19,750.00", "unit_as_printed": "crore", "confidence": 0.94, "source_cell_text": "19,750.00"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "Two of the three columns map onto stages. The 2024-2025 actuals column belongs to a prior year and was omitted."
+      },
+      "expected": {
+        "usable_count": 2,
+        "review_count": 0,
+        "amounts_inr_cr": ["21000.00", "19750.00"],
+        "stages": ["BE", "RE"]
+      }
+    },
+    {
+      "id": "a1-002-lakh-units",
+      "page": {
+        "source_id": "union_budget",
+        "document_title": "FIXTURE Detailed Demands for Grants, Annexure",
+        "page_number": 7,
+        "fy": "FY2026",
+        "page_text": "(Rs. in lakh)\nScheme                                   BE 2025-26\nNational Programme for Fixture Testing      45,600",
+        "parser_hint": "Unit is declared in the caption rather than the column header."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "scheme", "entity_label_as_printed": "National Programme for Fixture Testing", "stage": "BE", "head": "total", "amount_as_printed": "45,600", "unit_as_printed": "lakh", "confidence": 0.92, "source_cell_text": "45,600"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "The caption states lakh and no column overrides it."
+      },
+      "expected": {
+        "usable_count": 1,
+        "review_count": 0,
+        "amounts_inr_cr": ["456.00"],
+        "stages": ["BE"]
+      }
+    },
+    {
+      "id": "a1-003-unstated-unit-goes-to-review",
+      "page": {
+        "source_id": "cga_monthly",
+        "document_title": "FIXTURE Monthly Accounts, Union Government",
+        "page_number": 3,
+        "fy": "FY2026",
+        "page_text": "Expenditure up to September 2025\nMinistry of Fixture Affairs      12,340",
+        "parser_hint": "No unit appears in the caption, the header or a footnote."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "ministry", "entity_label_as_printed": "Ministry of Fixture Affairs", "stage": "EXPENDITURE", "head": "total", "period_start": "2025-04-01", "period_end": "2025-09-30", "is_cumulative": true, "amount_as_printed": "12,340", "unit_as_printed": "unstated", "confidence": 0.6, "source_cell_text": "12,340"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "The page states no unit anywhere that governs this cell, so the unit is reported as unstated."
+      },
+      "expected": {
+        "usable_count": 0,
+        "review_count": 1,
+        "amounts_inr_cr": [],
+        "stages": ["EXPENDITURE"]
+      }
+    },
+    {
+      "id": "a1-004-cumulative-expenditure",
+      "page": {
+        "source_id": "cga_monthly",
+        "document_title": "FIXTURE Monthly Accounts, Union Government",
+        "page_number": 5,
+        "fy": "FY2026",
+        "page_text": "(Rs. in crore)\nExpenditure April 2025 to November 2025 (progressive)\nMinistry of Fixture Roads          2,41,880.55",
+        "parser_hint": "Progressive total; the parser could not decide whether the figure is monthly or cumulative."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "ministry", "entity_label_as_printed": "Ministry of Fixture Roads", "stage": "EXPENDITURE", "head": "total", "period_start": "2025-04-01", "period_end": "2025-11-30", "is_cumulative": true, "amount_as_printed": "2,41,880.55", "unit_as_printed": "crore", "confidence": 0.93, "source_cell_text": "2,41,880.55"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "The heading says progressive, so the figure is cumulative from the start of the year."
+      },
+      "expected": {
+        "usable_count": 1,
+        "review_count": 0,
+        "amounts_inr_cr": ["241880.55"],
+        "stages": ["EXPENDITURE"]
+      }
+    },
+    {
+      "id": "a1-005-revenue-and-capital-heads",
+      "page": {
+        "source_id": "union_budget",
+        "document_title": "FIXTURE Expenditure Profile",
+        "page_number": 12,
+        "fy": "FY2026",
+        "page_text": "(In Rs. crore)\nMinistry of Fixture Power        Revenue   Capital\nBudget Estimates 2025-26           8,100    32,400",
+        "parser_hint": "Two heads in one row."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "ministry", "entity_label_as_printed": "Ministry of Fixture Power", "stage": "BE", "head": "revenue", "amount_as_printed": "8,100", "unit_as_printed": "crore", "confidence": 0.93, "source_cell_text": "8,100"},
+          {"entity_type": "ministry", "entity_label_as_printed": "Ministry of Fixture Power", "stage": "BE", "head": "capital", "amount_as_printed": "32,400", "unit_as_printed": "crore", "confidence": 0.93, "source_cell_text": "32,400"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "Revenue and capital reported separately; no total column is printed, so none was inferred."
+      },
+      "expected": {
+        "usable_count": 2,
+        "review_count": 0,
+        "amounts_inr_cr": ["8100.00", "32400.00"],
+        "stages": ["BE", "BE"]
+      }
+    },
+    {
+      "id": "a1-006-dashed-cell-omitted",
+      "page": {
+        "source_id": "union_budget",
+        "document_title": "FIXTURE Detailed Demands for Grants",
+        "page_number": 88,
+        "fy": "FY2026",
+        "page_text": "(Rs. in crore)\nScheme                          BE 2025-26    RE 2025-26\nFixture Coastal Programme            560           -",
+        "parser_hint": "One cell is a dash."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "scheme", "entity_label_as_printed": "Fixture Coastal Programme", "stage": "BE", "head": "total", "amount_as_printed": "560", "unit_as_printed": "crore", "confidence": 0.94, "source_cell_text": "560"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "The revised estimate cell is a dash, so no revised estimate row was produced. It was not carried down from the budget estimate."
+      },
+      "expected": {
+        "usable_count": 1,
+        "review_count": 0,
+        "amounts_inr_cr": ["560.00"],
+        "stages": ["BE"]
+      }
+    },
+    {
+      "id": "a1-007-not-a-fiscal-table",
+      "page": {
+        "source_id": "union_budget",
+        "document_title": "FIXTURE Budget at a Glance, foreword",
+        "page_number": 2,
+        "fy": "FY2026",
+        "page_text": "This volume presents the estimates of expenditure of the Union Government. Figures are rounded and readers are advised to consult the detailed demands.",
+        "parser_hint": "No table detected."
+      },
+      "model_response": {
+        "rows": [],
+        "page_is_fiscal_table": false,
+        "notes": "This page is narrative front matter. No evidence found on this page supports any figure."
+      },
+      "expected": {
+        "usable_count": 0,
+        "review_count": 0,
+        "amounts_inr_cr": [],
+        "stages": []
+      }
+    },
+    {
+      "id": "a1-008-low-confidence-merged-cells",
+      "page": {
+        "source_id": "union_budget",
+        "document_title": "FIXTURE Statement of Budget Estimates",
+        "page_number": 63,
+        "fy": "FY2026",
+        "page_text": "(Rs. in crore)\nFixture Urban Mission   BE  RE\n                     4,200 3,900",
+        "parser_hint": "Column boundaries are ambiguous; both figures sit in one extracted cell."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "scheme", "entity_label_as_printed": "Fixture Urban Mission", "stage": "BE", "head": "total", "amount_as_printed": "4,200", "unit_as_printed": "crore", "confidence": 0.62, "source_cell_text": "4,200 3,900"},
+          {"entity_type": "scheme", "entity_label_as_printed": "Fixture Urban Mission", "stage": "RE", "head": "total", "amount_as_printed": "3,900", "unit_as_printed": "crore", "confidence": 0.62, "source_cell_text": "4,200 3,900"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "The two figures straddle a column boundary and the assignment to budget and revised estimate is inferred from column order alone."
+      },
+      "expected": {
+        "usable_count": 0,
+        "review_count": 2,
+        "amounts_inr_cr": ["4200.00", "3900.00"],
+        "stages": ["BE", "RE"]
+      }
+    },
+    {
+      "id": "a1-009-accounting-negative",
+      "page": {
+        "source_id": "cga_monthly",
+        "document_title": "FIXTURE Monthly Accounts, recoveries",
+        "page_number": 9,
+        "fy": "FY2026",
+        "page_text": "(Rs. in crore)\nRecoveries netted against expenditure, Fixture Department   (1,204.50)",
+        "parser_hint": "Accounting-style parentheses."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "ministry", "entity_label_as_printed": "Fixture Department", "stage": "EXPENDITURE", "head": "total", "period_start": "2025-04-01", "period_end": "2025-10-31", "is_cumulative": true, "amount_as_printed": "(1,204.50)", "unit_as_printed": "crore", "confidence": 0.88, "source_cell_text": "(1,204.50)"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "Parentheses in this statement indicate a negative amount."
+      },
+      "expected": {
+        "usable_count": 1,
+        "review_count": 0,
+        "amounts_inr_cr": ["-1204.50"],
+        "stages": ["EXPENDITURE"]
+      }
+    },
+    {
+      "id": "a1-010-lakh-crore-phrase",
+      "page": {
+        "source_id": "union_budget",
+        "document_title": "FIXTURE Budget at a Glance, summary table",
+        "page_number": 4,
+        "fy": "FY2026",
+        "page_text": "Total expenditure, Budget Estimates 2025-26:  50.65 lakh crore",
+        "parser_hint": "Unit phrase spans two words."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "national", "entity_label_as_printed": "Union Government total expenditure", "stage": "BE", "head": "total", "amount_as_printed": "50.65", "unit_as_printed": "lakh crore", "confidence": 0.91, "source_cell_text": "50.65 lakh crore"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "The unit is lakh crore, which is one hundred thousand crore."
+      },
+      "expected": {
+        "usable_count": 1,
+        "review_count": 0,
+        "amounts_inr_cr": ["5065000.00"],
+        "stages": ["BE"]
+      }
+    },
+    {
+      "id": "a1-011-utilization-certificate",
+      "page": {
+        "source_id": "pfms_pub",
+        "document_title": "FIXTURE Scheme utilization statement",
+        "page_number": 1,
+        "fy": "FY2026",
+        "page_text": "(Rs. in crore)\nScheme: Fixture Rural Livelihood Mission\nReleased up to 31.12.2025:  8,900.00\nUtilization certificates received:  6,120.00",
+        "parser_hint": "Two stages on one page with different meanings."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "scheme", "entity_label_as_printed": "Fixture Rural Livelihood Mission", "stage": "RELEASE", "head": "total", "period_start": "2025-04-01", "period_end": "2025-12-31", "is_cumulative": true, "amount_as_printed": "8,900.00", "unit_as_printed": "crore", "confidence": 0.93, "source_cell_text": "8,900.00"},
+          {"entity_type": "scheme", "entity_label_as_printed": "Fixture Rural Livelihood Mission", "stage": "UTILIZATION", "head": "total", "period_start": "2025-04-01", "period_end": "2025-12-31", "is_cumulative": true, "amount_as_printed": "6,120.00", "unit_as_printed": "crore", "confidence": 0.9, "source_cell_text": "6,120.00"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "Released and utilized are different stages and are reported separately."
+      },
+      "expected": {
+        "usable_count": 2,
+        "review_count": 0,
+        "amounts_inr_cr": ["8900.00", "6120.00"],
+        "stages": ["RELEASE", "UTILIZATION"]
+      }
+    },
+    {
+      "id": "a1-012-rounded-rupees",
+      "page": {
+        "source_id": "ogd",
+        "document_title": "FIXTURE Open data extract, sanction orders",
+        "page_number": 1,
+        "fy": "FY2026",
+        "page_text": "Sanction order value: Rs. 4,50,00,000",
+        "parser_hint": "Figure is in rupees, not crore."
+      },
+      "model_response": {
+        "rows": [
+          {"entity_type": "scheme", "entity_label_as_printed": "Fixture Sanction Order", "stage": "SANCTION", "head": "total", "period_start": "2025-04-01", "period_end": "2026-03-31", "is_cumulative": false, "amount_as_printed": "4,50,00,000", "unit_as_printed": "rupee", "confidence": 0.9, "source_cell_text": "Rs. 4,50,00,000"}
+        ],
+        "page_is_fiscal_table": true,
+        "notes": "The figure is stated in rupees."
+      },
+      "expected": {
+        "usable_count": 1,
+        "review_count": 0,
+        "amounts_inr_cr": ["4.50"],
+        "stages": ["SANCTION"]
+      }
+    }
+  ]
+}

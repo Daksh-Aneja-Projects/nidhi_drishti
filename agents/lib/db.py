@@ -64,7 +64,12 @@ EVIDENCE_ITEM_WRITABLE_COLUMNS: frozenset[str] = frozenset({"summary"})
 _WRITE_VERBS = ("insert", "update", "delete", "truncate", "copy", "merge", "drop", "alter", "create")
 
 _INSERT_RE = re.compile(r"\binsert\s+into\s+(?:only\s+)?([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
-_UPDATE_RE = re.compile(r"\bupdate\s+(?:only\s+)?([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
+# The negative lookbehind and lookahead keep ``ON CONFLICT DO UPDATE SET`` from
+# being read as an update of a table called "set". Upserts are the normal shape
+# of every write in this package, so getting this wrong would refuse everything.
+_UPDATE_RE = re.compile(
+    r"(?<!do )\bupdate\s+(?:only\s+)?(?!set\b)([a-z_][a-z0-9_.\"]*)", re.IGNORECASE
+)
 _DELETE_RE = re.compile(r"\bdelete\s+from\s+(?:only\s+)?([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
 _TRUNCATE_RE = re.compile(r"\btruncate\s+(?:table\s+)?([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
 _MERGE_RE = re.compile(r"\bmerge\s+into\s+([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)

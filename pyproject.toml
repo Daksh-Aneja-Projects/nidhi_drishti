@@ -100,9 +100,14 @@ warn_unreachable = true
 ignore_missing_imports = true
 exclude = ["node_modules", "\\.venv"]
 
+# Tests pass deliberately narrow doubles (a fake object store, a grid of plain
+# strings) where the production signature is wider. That is the point of the
+# double, so the structural checks are relaxed here rather than papered over
+# with casts in every test.
 [[tool.mypy.overrides]]
 module = ["pipelines.tests.*"]
 disallow_untyped_defs = false
+disable_error_code = ["arg-type", "no-untyped-def"]
 
 [tool.coverage.run]
 source = ["pipelines"]

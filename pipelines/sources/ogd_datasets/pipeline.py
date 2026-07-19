@@ -177,9 +177,7 @@ def parse_resource_payload(
             continue
 
         try:
-            amount = parse_amount_cr(
-                str(record.get(spec.amount_field, "")), unit_hint=spec.unit
-            )
+            amount = parse_amount_cr(str(record.get(spec.amount_field, "")), unit_hint=spec.unit)
         except AmountParseError as exc:
             errors.append(
                 {
@@ -319,9 +317,7 @@ def run(
             metrics = RunMetrics(
                 row_count=len(validated),
                 total_amount_inr_cr=(
-                    sum((row.amount_inr_cr for row in validated), Decimal(0))
-                    if validated
-                    else None
+                    sum((row.amount_inr_cr for row in validated), Decimal(0)) if validated else None
                 ),
                 columns=tuple(fields),
                 parse_error_count=len(parse_errors),

@@ -248,9 +248,7 @@ def parse_amount_cr(
         return NOT_REPORTED
 
     if "%" in text:
-        raise AmountParseError(
-            f"{original!r} is a percentage, not an amount in crore.", original
-        )
+        raise AmountParseError(f"{original!r} is a percentage, not an amount in crore.", original)
 
     working = text.lower()
 

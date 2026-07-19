@@ -263,9 +263,7 @@ def run(
             outcome.artifacts.append(ingested.artifact.key)
 
             if "json" in ingested.fetch.content_type:
-                rows, parse_errors, columns = parse_statistics_json(
-                    ingested.content, as_of=as_of
-                )
+                rows, parse_errors, columns = parse_statistics_json(ingested.content, as_of=as_of)
             else:
                 rows, parse_errors, columns = parse_statistics_page(ingested.text, as_of=as_of)
 
@@ -288,8 +286,7 @@ def run(
             run_ctx.abort_if_drifted(findings)
 
             outcome.notes.append(
-                "GeM aggregates are recorded as a procurement activity signal, not as "
-                "expenditure."
+                "GeM aggregates are recorded as a procurement activity signal, not as expenditure."
             )
             run_ctx.metric(metrics_captured=len(validated))
 

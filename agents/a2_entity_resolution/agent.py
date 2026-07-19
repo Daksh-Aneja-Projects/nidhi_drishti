@@ -63,6 +63,16 @@ MAX_CANDIDATES = 8
 
 
 @dataclass(frozen=True, slots=True)
+class DeterministicChoice:
+    """A decision reached without a model call."""
+
+    entity_id: str
+    confidence: float
+    resolved_by: str
+    reasoning: str
+
+
+@dataclass(frozen=True, slots=True)
 class ResolutionRequest:
     raw_name: str
     entity_type: AliasEntityType
@@ -147,6 +157,34 @@ class EntityResolutionAgent:
             return None
         return top
 
+    @classmethod
+    def deterministic_choice(
+        cls, raw_name: str, candidates: list[Candidate]
+    ) -> DeterministicChoice | None:
+        """The part of the ladder that needs no model and no database.
+
+        Returns None when the case is genuinely ambiguous and has to be
+        adjudicated. Exposed as a classmethod so the eval harness can score the
+        cheap tiers of the ladder without standing up Postgres.
+        """
+        exact = cls.exact_match(raw_name, candidates)
+        if exact is not None:
+            return DeterministicChoice(
+                entity_id=exact.entity_id,
+                confidence=1.0,
+                resolved_by="exact",
+                reasoning="Normalised names are identical.",
+            )
+        trigram = cls.unambiguous_trigram(candidates)
+        if trigram is not None:
+            return DeterministicChoice(
+                entity_id=trigram.entity_id,
+                confidence=round(min(trigram.similarity, 0.99), 2),
+                resolved_by="trigram",
+                reasoning=f"Single dominant trigram match at {trigram.similarity:.2f}.",
+            )
+        return None
+
     def adjudicate(self, request: ResolutionRequest, candidates: list[Candidate]) -> Adjudication:
         system = self.prompt.render(
             raw_name=request.raw_name,
@@ -192,20 +230,15 @@ class EntityResolutionAgent:
 
         candidates = self.candidates(request)
 
-        exact = self.exact_match(request.raw_name, candidates)
-        if exact is not None:
-            return self._accept(request, exact.entity_id, 1.0, "exact", candidates,
-                                "Normalised names are identical.")
-
-        trigram = self.unambiguous_trigram(candidates)
-        if trigram is not None:
+        cheap = self.deterministic_choice(request.raw_name, candidates)
+        if cheap is not None:
             return self._accept(
                 request,
-                trigram.entity_id,
-                round(min(trigram.similarity, 0.99), 2),
-                "trigram",
+                cheap.entity_id,
+                cheap.confidence,
+                cheap.resolved_by,
                 candidates,
-                f"Single dominant trigram match at {trigram.similarity:.2f}.",
+                cheap.reasoning,
             )
 
         if not candidates:

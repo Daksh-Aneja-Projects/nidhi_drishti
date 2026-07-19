@@ -147,9 +147,7 @@ def parse_answer_listing(
 
 
 def _ministry_from_context(text: str) -> str | None:
-    match = re.search(
-        r"(ministry of [A-Za-z ,&]+|department of [A-Za-z ,&]+)", text, re.IGNORECASE
-    )
+    match = re.search(r"(ministry of [A-Za-z ,&]+|department of [A-Za-z ,&]+)", text, re.IGNORECASE)
     return clean_cell(match.group(1)) if match else None
 
 
@@ -193,7 +191,9 @@ def parse_utilization_tables(
             (
                 index
                 for index, cell in enumerate(table.header)
-                if any(word in cell.lower() for word in ("utilis", "utiliz", "expenditure", "spent"))
+                if any(
+                    word in cell.lower() for word in ("utilis", "utiliz", "expenditure", "spent")
+                )
             ),
             None,
         )
@@ -217,9 +217,7 @@ def parse_utilization_tables(
 
         from pipelines.parsers.pdf_table import rows_to_records
 
-        records, cell_errors = rows_to_records(
-            table, value_columns={"utilized": utilisation_index}
-        )
+        records, cell_errors = rows_to_records(table, value_columns={"utilized": utilisation_index})
         errors.extend(cell_errors)
 
         for record in records:

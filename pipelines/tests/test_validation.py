@@ -156,7 +156,7 @@ class TestFiscalFactRowConstraints:
                 fy="FY2026",
                 entity_type="ministry",
                 entity_id="min-defence",
-                stage="SPENT",  # type: ignore[arg-type]
+                stage="SPENT",
                 amount_inr_cr=Decimal("1"),
                 extraction_method="pdf_table",
             )
@@ -180,7 +180,7 @@ class TestFiscalFactRowConstraints:
                 entity_id="min-defence",
                 stage="BE",
                 amount_inr_cr=Decimal("1"),
-                extraction_method="vibes",  # type: ignore[arg-type]
+                extraction_method="vibes",
             )
 
     def test_a_valid_cumulative_expenditure_fact(self) -> None:

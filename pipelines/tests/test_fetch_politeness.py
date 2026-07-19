@@ -61,24 +61,23 @@ class TestUserAgent:
         from pipelines.lib.config import ScraperSettings
 
         with pytest.raises(ConfigError):
-            ScraperSettings(
-                user_agent="Mozilla/5.0", min_delay_seconds=2.0, respect_robots=True
-            )
+            ScraperSettings(user_agent="Mozilla/5.0", min_delay_seconds=2.0, respect_robots=True)
 
 
 class TestRobots:
     def test_robots_is_fetched_before_the_first_request(self, settings: Settings) -> None:
         calls: list[str] = []
-        with make_client(
-            settings, handler_for(calls=calls), RecordingSleeper()
-        ) as client:
+        with make_client(settings, handler_for(calls=calls), RecordingSleeper()) as client:
             client.get("https://cga.nic.in/report")
         assert calls[0].endswith("/robots.txt")
 
     def test_a_disallowed_path_raises(self, settings: Settings) -> None:
-        with make_client(
-            settings, handler_for(robots=ROBOTS_DISALLOW_ALL), RecordingSleeper()
-        ) as client, pytest.raises(RobotsDisallowed):
+        with (
+            make_client(
+                settings, handler_for(robots=ROBOTS_DISALLOW_ALL), RecordingSleeper()
+            ) as client,
+            pytest.raises(RobotsDisallowed),
+        ):
             client.get("https://cga.nic.in/report")
 
     def test_robots_is_cached_per_origin(self, settings: Settings) -> None:
@@ -100,11 +99,14 @@ class TestRobots:
     def test_a_disallowed_path_is_not_retried(self, settings: Settings) -> None:
         """Retrying a refusal is rude and pointless."""
         calls: list[str] = []
-        with make_client(
-            settings,
-            handler_for(robots=ROBOTS_DISALLOW_ALL, calls=calls),
-            RecordingSleeper(),
-        ) as client, pytest.raises(RobotsDisallowed):
+        with (
+            make_client(
+                settings,
+                handler_for(robots=ROBOTS_DISALLOW_ALL, calls=calls),
+                RecordingSleeper(),
+            ) as client,
+            pytest.raises(RobotsDisallowed),
+        ):
             client.get("https://cga.nic.in/report")
         assert sum(1 for call in calls if not call.endswith("robots.txt")) == 0
 
@@ -197,9 +199,7 @@ class TestRetries:
             assert client.get("https://cga.nic.in/report").status_code == 200
         assert attempts["count"] == 3
 
-    def test_a_404_is_not_retried_because_it_is_a_drift_signal(
-        self, settings: Settings
-    ) -> None:
+    def test_a_404_is_not_retried_because_it_is_a_drift_signal(self, settings: Settings) -> None:
         attempts = {"count": 0}
 
         def handle(request: httpx.Request) -> httpx.Response:
@@ -215,17 +215,18 @@ class TestRetries:
         assert caught.value.status_code == 404
 
     def test_retries_give_up_and_reraise(self, settings: Settings) -> None:
-        with make_client(
-            settings, handler_for(status=503), RecordingSleeper(), max_attempts=2
-        ) as client, pytest.raises(HttpStatusError):
+        with (
+            make_client(
+                settings, handler_for(status=503), RecordingSleeper(), max_attempts=2
+            ) as client,
+            pytest.raises(HttpStatusError),
+        ):
             client.get("https://cga.nic.in/report")
 
 
 class TestFetchResult:
     def test_result_carries_provenance_fields(self, settings: Settings) -> None:
-        with make_client(
-            settings, handler_for(b"<html>x</html>"), RecordingSleeper()
-        ) as client:
+        with make_client(settings, handler_for(b"<html>x</html>"), RecordingSleeper()) as client:
             result = client.get("https://cga.nic.in/report")
         assert result.content_type == "text/html"
         assert result.byte_size == len(b"<html>x</html>")

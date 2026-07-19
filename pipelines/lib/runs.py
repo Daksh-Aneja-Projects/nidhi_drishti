@@ -12,9 +12,11 @@ is meant to be honest about.
         run.add_drift(findings)
 
 Exit status:
-  * an exception escaping the block   -> ``failed``, alert raised, re-raised
-  * any drift finding recorded        -> ``drift_alert``, alert raised
-  * otherwise                         -> ``ok``
+  * an exception escaping the block      -> ``failed``, alert raised, re-raised
+  * a deliberate abort on severe drift   -> ``drift_alert``, alert raised
+  * a warn or high drift finding         -> ``drift_alert``, alert raised
+  * informational findings only          -> ``ok``, findings kept in metrics
+  * otherwise                            -> ``ok``
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ import traceback
 from collections.abc import Sequence
 from decimal import Decimal
 from types import TracebackType
-from typing import Any
+from typing import Any, Literal
 
 import psycopg
 import structlog
@@ -73,9 +75,7 @@ class PipelineRun:
         self._started = time.monotonic()
         if self.conn is not None and not self.dry_run:
             self.run_id = start_pipeline_run(self.conn, self.source_id)
-        log.info(
-            "run.started", source_id=self.source_id, run_id=self.run_id, dry_run=self.dry_run
-        )
+        log.info("run.started", source_id=self.source_id, run_id=self.run_id, dry_run=self.dry_run)
         return self
 
     def __exit__(
@@ -83,7 +83,7 @@ class PipelineRun:
         exc_type: type[BaseException] | None,
         exc: BaseException | None,
         tb: TracebackType | None,
-    ) -> bool:
+    ) -> Literal[False]:
         self.metrics["duration_seconds"] = round(time.monotonic() - self._started, 3)
         self.metrics["dry_run"] = self.dry_run
 

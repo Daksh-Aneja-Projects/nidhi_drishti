@@ -82,11 +82,7 @@ def _kwargs_for(name: str, args: argparse.Namespace) -> dict[str, Any]:
         kwargs.pop("url", None)
         if args.fy:
             kwargs["default_fy"] = args.fy
-    as_of = (
-        date.fromisoformat(args.as_of)
-        if args.as_of
-        else datetime.now(UTC).date()
-    )
+    as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now(UTC).date()
     if name == "pfms_published":
         kwargs["as_published_on"] = as_of
     if name == "gem_stats":

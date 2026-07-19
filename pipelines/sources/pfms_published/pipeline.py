@@ -322,8 +322,7 @@ def run(
                 outcome.notes.append("dry run: nothing written")
 
             outcome.notes.append(
-                f"Figures are as published on the PFMS dashboard on "
-                f"{as_published_on.isoformat()}."
+                f"Figures are as published on the PFMS dashboard on {as_published_on.isoformat()}."
             )
             run_ctx.metric(facts_written=outcome.facts_written)
 

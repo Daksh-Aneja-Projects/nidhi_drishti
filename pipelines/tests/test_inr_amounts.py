@@ -237,9 +237,7 @@ class TestRealDocumentStrings:
             ("1,04,278", Decimal("104278")),
         ],
     )
-    def test_budget_style_cells_with_a_crore_header(
-        self, raw: str, expected: Decimal
-    ) -> None:
+    def test_budget_style_cells_with_a_crore_header(self, raw: str, expected: Decimal) -> None:
         assert parse_amount_cr(raw, unit_hint=CRORE) == expected
 
     def test_non_breaking_spaces_survive_pdf_extraction(self) -> None:

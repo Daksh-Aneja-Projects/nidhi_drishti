@@ -108,9 +108,7 @@ class TestColumnSet:
 
     def test_reordering_is_not_a_change(self) -> None:
         history = [metrics(100, "5000", columns=("ministry", "expenditure"))]
-        findings = sanity_check(
-            metrics(100, "5000", columns=("expenditure", "ministry")), history
-        )
+        findings = sanity_check(metrics(100, "5000", columns=("expenditure", "ministry")), history)
         assert "column_set_change" not in checks(findings)
 
 

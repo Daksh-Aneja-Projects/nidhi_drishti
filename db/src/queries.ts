@@ -43,7 +43,7 @@ import { query, queryOne } from './client';
 type Numeric = string | null;
 
 interface ProvenanceRow {
-  source_record_id: number;
+  source_record_id: number | string;
   source_id: string;
   source_name: string;
   url: string | null;
@@ -77,9 +77,21 @@ function mapProvenance(row: ProvenanceRow): Provenance {
  * thing this product cannot trade away.
  */
 export async function getProvenanceMap(
-  sourceRecordIds: ReadonlyArray<number | null | undefined>,
+  sourceRecordIds: ReadonlyArray<number | string | null | undefined>,
 ): Promise<Map<number, Provenance>> {
-  const ids = [...new Set(sourceRecordIds.filter((id): id is number => typeof id === 'number'))];
+  // BIGINT arrives from `pg` as a *string*, because an int8 can exceed the range
+  // JavaScript numbers represent exactly. Filtering on `typeof id === 'number'`
+  // therefore silently discards every id and strips the provenance from every
+  // figure on the site, which is the one failure that must never be quiet.
+  // Ids are normalised through Number() here and at every lookup.
+  const ids = [
+    ...new Set(
+      sourceRecordIds
+        .filter((id): id is number | string => id !== null && id !== undefined)
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id)),
+    ),
+  ];
   if (ids.length === 0) return new Map();
   const rows = await query<ProvenanceRow>(
     `SELECT source_record_id, source_id, source_name, url, artifact_key,
@@ -141,8 +153,8 @@ interface NationalRow {
   burn_ratio: Numeric;
   ministry_count: number;
   ministry_sum_residual: Numeric;
-  authority_source_record_id: number | null;
-  expenditure_source_record_id: number | null;
+  authority_source_record_id: number | string | null;
+  expenditure_source_record_id: number | string | null;
   has_illustrative_source: boolean;
 }
 
@@ -201,8 +213,8 @@ interface MinistryRow {
   pct_spent: Numeric;
   pct_fy_elapsed: Numeric;
   burn_ratio: Numeric;
-  authority_source_record_id: number | null;
-  expenditure_source_record_id: number | null;
+  authority_source_record_id: number | string | null;
+  expenditure_source_record_id: number | string | null;
   has_illustrative_source: boolean;
   open_flag_count: number;
 }
@@ -334,7 +346,7 @@ interface MonthlyRow {
   monthly_amount: Numeric;
   is_revision_artifact: boolean;
   is_provisional: boolean;
-  source_record_id: number | null;
+  source_record_id: number | string | null;
 }
 
 const MONTH_NAMES = [
@@ -395,9 +407,9 @@ interface SchemeRow {
   utilization_pct: Numeric;
   tender_count: number;
   tender_value: Numeric;
-  allocation_source_record_id: number | null;
-  release_source_record_id: number | null;
-  utilization_source_record_id: number | null;
+  allocation_source_record_id: number | string | null;
+  release_source_record_id: number | string | null;
+  utilization_source_record_id: number | string | null;
   has_illustrative_source: boolean;
 }
 

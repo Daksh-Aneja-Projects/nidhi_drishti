@@ -143,8 +143,7 @@ def parse_budget_csv(
         if fy is None:
             errors.append(
                 {
-                    "reason": f"Row {line_number} carries no readable fiscal year "
-                    f"({fy_value!r}).",
+                    "reason": f"Row {line_number} carries no readable fiscal year ({fy_value!r}).",
                     "stage_hint": "BE",
                     "raw_context": {"row": record},
                 }
@@ -283,9 +282,7 @@ def run(
 
     try:
         with PipelineRun(SOURCE_ID, conn, dry_run=dry_run) as run_ctx:
-            ingested = ingest_url(
-                csv_url, source_id=SOURCE_ID, client=http, run=run_ctx, conn=conn
-            )
+            ingested = ingest_url(csv_url, source_id=SOURCE_ID, client=http, run=run_ctx, conn=conn)
             outcome.artifacts.append(ingested.artifact.key)
 
             rows, parse_errors, columns = parse_budget_csv(

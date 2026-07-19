@@ -154,8 +154,10 @@ def alert_drift(
     run_id: int | None = None,
     settings: Settings | None = None,
 ) -> bool:
-    lines = [f"- [{getattr(f, 'severity', '?')}] {getattr(f, 'check', '?')}: "
-             f"{getattr(f, 'detail', f)}" for f in findings]
+    lines = [
+        f"- [{getattr(f, 'severity', '?')}] {getattr(f, 'check', '?')}: {getattr(f, 'detail', f)}"
+        for f in findings
+    ]
     severity: AlertSeverity = (
         "high" if any(getattr(f, "severity", "") == "high" for f in findings) else "warn"
     )

@@ -1,0 +1,239 @@
+{
+  "_comment": "FIXTURES - synthetic evaluation data for A4 narrative faithfulness. Every entity, figure, tender and evidence item below is invented for testing. The narratives labelled unfaithful are deliberately wrong and exist so the self check can be scored on catching them. Nothing here may be published.",
+  "suite": "a4_narrative_faithfulness",
+  "cases": [
+    {
+      "id": "a4-001-faithful-basic",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-water",
+        "entity_label": "Ministry of Fixture Water",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "BE", "head": "total", "amount_inr_cr": "21000.00", "source_record_id": 401, "document_date": "2025-02-01"},
+          {"stage": "RE", "head": "total", "amount_inr_cr": "19750.00", "source_record_id": 402, "document_date": "2026-02-01"},
+          {"stage": "EXPENDITURE", "head": "total", "amount_inr_cr": "9100.00", "source_record_id": 403, "period_end": "2025-11-30", "is_cumulative": true}
+        ],
+        "tenders": [
+          {"tender_id": "FX/2025/0011", "title": "Fixture pipeline package 3", "status": "published", "value_inr_cr": "340.00", "published_date": "2025-09-14"}
+        ],
+        "evidence": [
+          {"evidence_id": 71, "kind": "pib", "title": "Fixture Water review meeting held", "published_date": "2025-10-02"}
+        ]
+      },
+      "narrative": "## Reported\n\nThe Revised Estimate for the year is 19,750.00 INR crore, below the Budget Estimate of 21,000.00 INR crore [source:401] [source:402]. Cumulative expenditure to 30 November 2025 stood at 9,100.00 INR crore [source:403]. That is 46.1 percent of the current authority of 19,750.00 INR crore.\n\n## Observable activity\n\nOne matching tender was published in the central procurement portal during the year, worth 340.00 INR crore [tender:FX/2025/0011]. A review meeting was reported in October 2025 [evidence:71].\n\n## What is not in the record\n\nThe expenditure figure is a cumulative account to 30 November 2025 and central accounts run roughly two months behind, so activity after that date is not reflected. No evidence found in the indexed sources describes how the released funds were applied.",
+      "label": "faithful",
+      "expect_pass": true
+    },
+    {
+      "id": "a4-002-invented-figure",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-water",
+        "entity_label": "Ministry of Fixture Water",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "BE", "head": "total", "amount_inr_cr": "21000.00", "source_record_id": 401, "document_date": "2025-02-01"},
+          {"stage": "EXPENDITURE", "head": "total", "amount_inr_cr": "9100.00", "source_record_id": 403, "period_end": "2025-11-30", "is_cumulative": true}
+        ],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nThe Budget Estimate was 21,000.00 INR crore [source:401] and cumulative expenditure to 30 November 2025 was 9,842.00 INR crore [source:403].\n\n## Observable activity\n\nNo matching tenders were found.\n\n## What is not in the record\n\nNo evidence found in the indexed sources for this period.",
+      "label": "unfaithful",
+      "expect_pass": false,
+      "expected_problem_contains": "9,842.00"
+    },
+    {
+      "id": "a4-003-computed-percentage",
+      "bundle": {
+        "entity_type": "scheme",
+        "entity_id": "sch-fixture-housing",
+        "entity_label": "Fixture Housing Mission",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "BE", "head": "total", "amount_inr_cr": "8000.00", "source_record_id": 511, "document_date": "2025-02-01"},
+          {"stage": "RELEASE", "head": "total", "amount_inr_cr": "2600.00", "source_record_id": 512, "period_end": "2025-12-31", "is_cumulative": true}
+        ],
+        "tenders": [],
+        "evidence": [],
+        "skip_derived": true
+      },
+      "narrative": "## Reported\n\nThe allocation was 8,000.00 INR crore [source:511] and releases to 31 December 2025 were 2,600.00 INR crore [source:512], which is 32.5 percent of the allocation.\n\n## Observable activity\n\nNo matching tenders were found in the central procurement portal.\n\n## What is not in the record\n\nNo evidence found in the indexed sources for this scheme and year.",
+      "label": "unfaithful",
+      "expect_pass": false,
+      "expected_problem_contains": "32.5",
+      "note": "The arithmetic is correct. It still fails, because the figure is not in the facts and a reader cannot trace it to a source record. Supplying the share as a derived fact is the fix."
+    },
+    {
+      "id": "a4-004-faithful-with-derived-supplied",
+      "bundle": {
+        "entity_type": "scheme",
+        "entity_id": "sch-fixture-housing",
+        "entity_label": "Fixture Housing Mission",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "BE", "head": "total", "amount_inr_cr": "8000.00", "source_record_id": 511, "document_date": "2025-02-01"},
+          {"stage": "RELEASE", "head": "total", "amount_inr_cr": "2600.00", "source_record_id": 512, "period_end": "2025-12-31", "is_cumulative": true}
+        ],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nThe allocation was 8,000.00 INR crore [source:511] and releases to 31 December 2025 were 2,600.00 INR crore [source:512], which the facts record as 32.5 percent of the current authority.\n\n## Observable activity\n\nNo matching tenders were found in the central procurement portal for this scheme and year.\n\n## What is not in the record\n\nNo evidence found in the indexed sources describes what the released funds were spent on.",
+      "label": "faithful",
+      "expect_pass": true,
+      "note": "Identical claim to a4-003, but here compute_derived supplies the share, so it is a fact rather than a calculation."
+    },
+    {
+      "id": "a4-005-banned-vocabulary",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-roads",
+        "entity_label": "Ministry of Fixture Roads",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "RELEASE", "head": "total", "amount_inr_cr": "12000.00", "source_record_id": 601, "period_end": "2025-12-31", "is_cumulative": true}
+        ],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nReleases to 31 December 2025 were 12,000.00 INR crore [source:601].\n\n## Observable activity\n\nNo tenders were found, which suggests funds may have been siphoned away from the intended programme.\n\n## What is not in the record\n\nNothing further.",
+      "label": "unfaithful",
+      "expect_pass": false,
+      "expected_problem_contains": "siphon"
+    },
+    {
+      "id": "a4-006-rounded-figure-is-acceptable",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-power",
+        "entity_label": "Ministry of Fixture Power",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "BE", "head": "total", "amount_inr_cr": "40500.40", "source_record_id": 701, "document_date": "2025-02-01"}
+        ],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nThe Budget Estimate was 40,500 INR crore [source:701].\n\n## Observable activity\n\nNo matching tenders were found in the central procurement portal.\n\n## What is not in the record\n\nNo evidence found in the indexed sources for this ministry and year.",
+      "label": "faithful",
+      "expect_pass": true,
+      "note": "Rounding a stated figure to whole crore is a presentation choice, not a new number."
+    },
+    {
+      "id": "a4-007-transposed-digits",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-power",
+        "entity_label": "Ministry of Fixture Power",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "BE", "head": "total", "amount_inr_cr": "40500.40", "source_record_id": 701, "document_date": "2025-02-01"}
+        ],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nThe Budget Estimate was 45,000.40 INR crore [source:701].\n\n## Observable activity\n\nNo matching tenders were found.\n\n## What is not in the record\n\nNo evidence found in the indexed sources.",
+      "label": "unfaithful",
+      "expect_pass": false,
+      "expected_problem_contains": "45,000.40",
+      "note": "The nearly-right number is the failure mode that matters. It looks exactly like every correct figure around it."
+    },
+    {
+      "id": "a4-008-tender-count-is-a-fact",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-rail",
+        "entity_label": "Ministry of Fixture Rail",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "EXPENDITURE", "head": "total", "amount_inr_cr": "5000.00", "source_record_id": 801, "period_end": "2025-10-31", "is_cumulative": true}
+        ],
+        "tenders": [
+          {"tender_id": "FX/2025/0100", "title": "Fixture track renewal A", "status": "published", "value_inr_cr": "120.00", "published_date": "2025-06-01"},
+          {"tender_id": "FX/2025/0101", "title": "Fixture track renewal B", "status": "awarded", "value_inr_cr": "80.00", "published_date": "2025-07-01"}
+        ],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nCumulative expenditure to 31 October 2025 was 5,000.00 INR crore [source:801].\n\n## Observable activity\n\n2 matching tenders were published in the central procurement portal, worth 120.00 INR crore and 80.00 INR crore [tender:FX/2025/0100] [tender:FX/2025/0101].\n\n## What is not in the record\n\nNo press releases or parliament answers for this ministry and year were indexed, so no evidence found here speaks to delivery.",
+      "label": "faithful",
+      "expect_pass": true
+    },
+    {
+      "id": "a4-009-summed-tender-values",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-rail",
+        "entity_label": "Ministry of Fixture Rail",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "EXPENDITURE", "head": "total", "amount_inr_cr": "5000.00", "source_record_id": 801, "period_end": "2025-10-31", "is_cumulative": true}
+        ],
+        "tenders": [
+          {"tender_id": "FX/2025/0100", "title": "Fixture track renewal A", "status": "published", "value_inr_cr": "120.00", "published_date": "2025-06-01"},
+          {"tender_id": "FX/2025/0101", "title": "Fixture track renewal B", "status": "awarded", "value_inr_cr": "80.00", "published_date": "2025-07-01"}
+        ],
+        "evidence": [],
+        "skip_derived": true
+      },
+      "narrative": "## Reported\n\nCumulative expenditure to 31 October 2025 was 5,000.00 INR crore [source:801].\n\n## Observable activity\n\nTwo tenders together worth 200.00 INR crore were published [tender:FX/2025/0100] [tender:FX/2025/0101].\n\n## What is not in the record\n\nNo evidence found in the indexed sources.",
+      "label": "unfaithful",
+      "expect_pass": false,
+      "expected_problem_contains": "200.00",
+      "note": "The sum is right. It is still a computed figure, and with the derived total withheld it has no source to trace to."
+    },
+    {
+      "id": "a4-010-empty-record-honest",
+      "bundle": {
+        "entity_type": "scheme",
+        "entity_id": "sch-fixture-empty",
+        "entity_label": "Fixture Dormant Scheme",
+        "fy": "FY2026",
+        "fiscal_facts": [],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nNo figures for this scheme and financial year are recorded in the sources indexed here.\n\n## Observable activity\n\nNo matching tenders were found in the central procurement portal.\n\n## What is not in the record\n\nNo evidence found in the indexed sources. An absence here reflects what this project has ingested and is not a statement about whether the scheme was funded or active.",
+      "label": "faithful",
+      "expect_pass": true
+    },
+    {
+      "id": "a4-011-em-dash-in-copy",
+      "bundle": {
+        "entity_type": "ministry",
+        "entity_id": "min-fixture-health",
+        "entity_label": "Ministry of Fixture Health",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "BE", "head": "total", "amount_inr_cr": "90000.00", "source_record_id": 901, "document_date": "2025-02-01"}
+        ],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nThe Budget Estimate was 90,000.00 INR crore [source:901] — the largest line in the demand.\n\n## Observable activity\n\nNo matching tenders were found.\n\n## What is not in the record\n\nNo evidence found in the indexed sources.",
+      "label": "unfaithful",
+      "expect_pass": false,
+      "expected_problem_contains": "em-dash"
+    },
+    {
+      "id": "a4-012-stage-confusion",
+      "bundle": {
+        "entity_type": "scheme",
+        "entity_id": "sch-fixture-water-supply",
+        "entity_label": "Fixture Water Supply Mission",
+        "fy": "FY2026",
+        "fiscal_facts": [
+          {"stage": "RELEASE", "head": "total", "amount_inr_cr": "3400.00", "source_record_id": 1001, "period_end": "2025-12-31", "is_cumulative": true}
+        ],
+        "tenders": [],
+        "evidence": []
+      },
+      "narrative": "## Reported\n\nThe scheme spent 3,400.00 INR crore during the year [source:1001].\n\n## Observable activity\n\nNo matching tenders were found in the central procurement portal.\n\n## What is not in the record\n\nNo evidence found in the indexed sources.",
+      "label": "unfaithful",
+      "expect_pass": false,
+      "model_only": true,
+      "expected_problem_contains": "stage",
+      "note": "The figure is correct and the deterministic pass has no objection. Only the model pass can see that a RELEASE was described as spending, which is why both passes exist."
+    }
+  ]
+}

@@ -88,9 +88,7 @@ class TestCgaMonthly:
         assert all(row["ministry_raw"] != "Ministry of Ayush" for row in rows)
 
     def test_without_a_stated_unit_every_row_becomes_a_parse_error(self) -> None:
-        rows, errors, _ = parse_expenditure_table(
-            fixture("cga_monthly_accounts_no_unit.html")
-        )
+        rows, errors, _ = parse_expenditure_table(fixture("cga_monthly_accounts_no_unit.html"))
         assert rows == []
         assert len(errors) == 2
         assert all("no unit" in error["reason"] for error in errors)
@@ -292,9 +290,7 @@ class TestPfmsPublished:
 
 class TestObiHistorical:
     def test_parses_be_and_re_from_the_csv(self) -> None:
-        rows, errors, columns = parse_budget_csv(
-            fixture("obi_union_budget.csv"), unit_hint=CRORE
-        )
+        rows, errors, columns = parse_budget_csv(fixture("obi_union_budget.csv"), unit_hint=CRORE)
         assert errors == []
         assert "budget_estimates" in columns
         be_rows = [row for row in rows if row["stage"] == "BE"]

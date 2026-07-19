@@ -126,7 +126,9 @@ def token_set(name: str) -> frozenset[str]:
     Welfare" and "Health and Family Welfare" reduce to the same token set, which
     is correct, while "Higher Education" and "School Education" do not.
     """
-    return frozenset(token for token in normalise_org_name(name).split() if token not in _NOISE_TOKENS)
+    return frozenset(
+        token for token in normalise_org_name(name).split() if token not in _NOISE_TOKENS
+    )
 
 
 def token_overlap(left: str, right: str) -> float:

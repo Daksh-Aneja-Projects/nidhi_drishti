@@ -48,9 +48,7 @@ class TestKeys:
             ("", None, "bin"),
         ],
     )
-    def test_extension_selection(
-        self, content_type: str, url: str | None, expected: str
-    ) -> None:
+    def test_extension_selection(self, content_type: str, url: str | None, expected: str) -> None:
         assert extension_for(content_type, url) == expected
 
 
@@ -92,12 +90,22 @@ class TestStoreRaw:
         self, settings: Settings, object_store: FakeObjectStore
     ) -> None:
         first = store_raw(
-            "cga_monthly", None, b"one", "application/pdf",
-            settings=settings, store=object_store, when=WHEN,
+            "cga_monthly",
+            None,
+            b"one",
+            "application/pdf",
+            settings=settings,
+            store=object_store,
+            when=WHEN,
         )
         second = store_raw(
-            "cga_monthly", None, b"two", "application/pdf",
-            settings=settings, store=object_store, when=WHEN,
+            "cga_monthly",
+            None,
+            b"two",
+            "application/pdf",
+            settings=settings,
+            store=object_store,
+            when=WHEN,
         )
         assert first.key != second.key
         assert object_store.puts == 2
@@ -107,8 +115,12 @@ class TestStoreRaw:
     ) -> None:
         with pytest.raises(ValueError, match="empty artifact"):
             store_raw(
-                "cga_monthly", None, b"", "application/pdf",
-                settings=settings, store=object_store,
+                "cga_monthly",
+                None,
+                b"",
+                "application/pdf",
+                settings=settings,
+                store=object_store,
             )
 
     def test_an_unregistered_source_is_refused(
@@ -117,8 +129,12 @@ class TestStoreRaw:
         """A source with no registry row cannot be ingested (docs/03)."""
         with pytest.raises(ConfigError):
             store_raw(
-                "some_new_portal", None, PDF_BYTES, "application/pdf",
-                settings=settings, store=object_store,
+                "some_new_portal",
+                None,
+                PDF_BYTES,
+                "application/pdf",
+                settings=settings,
+                store=object_store,
             )
 
     def test_there_is_no_delete_function(self) -> None:
@@ -133,8 +149,13 @@ class TestReadBack:
         self, settings: Settings, object_store: FakeObjectStore
     ) -> None:
         ref = store_raw(
-            "cga_monthly", None, PDF_BYTES, "application/pdf",
-            settings=settings, store=object_store, when=WHEN,
+            "cga_monthly",
+            None,
+            PDF_BYTES,
+            "application/pdf",
+            settings=settings,
+            store=object_store,
+            when=WHEN,
         )
         assert read_raw(ref.key, settings=settings, store=object_store) == PDF_BYTES
 
@@ -142,8 +163,13 @@ class TestReadBack:
         self, settings: Settings, object_store: FakeObjectStore
     ) -> None:
         ref = store_raw(
-            "cga_monthly", None, PDF_BYTES, "application/pdf",
-            settings=settings, store=object_store, when=WHEN,
+            "cga_monthly",
+            None,
+            PDF_BYTES,
+            "application/pdf",
+            settings=settings,
+            store=object_store,
+            when=WHEN,
         )
         object_store.objects[ref.key] = b"tampered"
         with pytest.raises(RuntimeError, match="does not match its own hash"):

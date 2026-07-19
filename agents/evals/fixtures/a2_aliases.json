@@ -1,0 +1,307 @@
+{
+  "_comment": "FIXTURES - synthetic evaluation data for A2 entity resolution. Names and ids are modelled on real Government of India naming conventions, but every candidate list, similarity score and adjudication here was written by hand for testing. Nothing in this file is ingested data and nothing in it may be published.",
+  "suite": "a2_alias_matching",
+  "cases": [
+    {
+      "id": "a2-001-exact",
+      "raw_name": "Ministry of Jal Shakti",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-jal-shakti", "name": "Ministry of Jal Shakti", "similarity": 1.0, "via": "reference"},
+        {"entity_id": "min-jal-shakti-ddws", "name": "Department of Drinking Water and Sanitation", "similarity": 0.21, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-jal-shakti", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-002-abbreviation",
+      "raw_name": "M/o Jal Shakti",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-jal-shakti", "name": "Ministry of Jal Shakti", "similarity": 0.62, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-jal-shakti", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-003-ampersand",
+      "raw_name": "Ministry of Health & Family Welfare",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-health", "name": "Ministry of Health and Family Welfare", "similarity": 0.88, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-health", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-004-deptt-abbrev",
+      "raw_name": "Deptt. of Higher Education",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-edu-higher", "name": "Department of Higher Education", "similarity": 0.79, "via": "reference"},
+        {"entity_id": "min-edu-school", "name": "Department of School Education and Literacy", "similarity": 0.44, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-edu-higher", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-005-trailing-punctuation",
+      "raw_name": "Ministry of Railways.",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-railways", "name": "Ministry of Railways", "similarity": 0.97, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-railways", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-006-clear-trigram",
+      "raw_name": "Ministry of Road Transport and Highways ",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-morth", "name": "Ministry of Road Transport and Highways", "similarity": 0.98, "via": "reference"},
+        {"entity_id": "min-shipping", "name": "Ministry of Ports, Shipping and Waterways", "similarity": 0.30, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-morth", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-007-dominant-trigram-not-exact",
+      "raw_name": "Ministry of Agriculture and Farmers Welfare (Krishi Bhavan)",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-agri", "name": "Ministry of Agriculture and Farmers Welfare", "similarity": 0.94, "via": "reference"},
+        {"entity_id": "min-rural", "name": "Ministry of Rural Development", "similarity": 0.29, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-agri", "expected_tier": "trigram"}
+    },
+    {
+      "id": "a2-008-department-vs-ministry",
+      "raw_name": "Ministry of Jal Shakti, Department of Drinking Water and Sanitation",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-jal-shakti", "name": "Ministry of Jal Shakti", "similarity": 0.61, "via": "reference"},
+        {"entity_id": "min-jal-shakti-ddws", "name": "Department of Drinking Water and Sanitation", "similarity": 0.58, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "min-jal-shakti-ddws", "confidence": 0.95, "reasoning": "The string names the department explicitly and the ministry only as its parent. The department is the more specific and correct match."},
+      "expected": {"entity_id": "min-jal-shakti-ddws", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-009-close-siblings-must-queue",
+      "raw_name": "Department of Education",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-edu-higher", "name": "Department of Higher Education", "similarity": 0.71, "via": "reference"},
+        {"entity_id": "min-edu-school", "name": "Department of School Education and Literacy", "similarity": 0.67, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": null, "confidence": 0.4, "reasoning": "The string does not say which of the two education departments is meant and both are plausible."},
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    },
+    {
+      "id": "a2-010-unknown-name",
+      "raw_name": "Bharat Sanchar Nigam Limited Regional Office Guwahati",
+      "entity_type": "ministry",
+      "candidates": [],
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    },
+    {
+      "id": "a2-011-renamed-ministry",
+      "raw_name": "Ministry of Human Resource Development",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-education", "name": "Ministry of Education", "similarity": 0.38, "via": "reference"},
+        {"entity_id": "min-labour", "name": "Ministry of Labour and Employment", "similarity": 0.36, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "min-education", "confidence": 0.92, "reasoning": "The Ministry of Human Resource Development was renamed the Ministry of Education in 2020. The candidate is the same entity under its current name."},
+      "expected": {"entity_id": "min-education", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-012-transliteration",
+      "raw_name": "Krishi Mantralaya",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-agri", "name": "Ministry of Agriculture and Farmers Welfare", "similarity": 0.36, "via": "reference"},
+        {"entity_id": "min-jal-shakti", "name": "Ministry of Jal Shakti", "similarity": 0.35, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "min-agri", "confidence": 0.91, "reasoning": "Krishi Mantralaya is the Hindi name of the agriculture ministry."},
+      "expected": {"entity_id": "min-agri", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-013-low-confidence-agent-queues",
+      "raw_name": "Office of the Chief Engineer, Works Division",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-housing", "name": "Ministry of Housing and Urban Affairs", "similarity": 0.37, "via": "reference"},
+        {"entity_id": "min-morth", "name": "Ministry of Road Transport and Highways", "similarity": 0.36, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "min-housing", "confidence": 0.55, "reasoning": "A works division could sit under several ministries and the string does not say which."},
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    },
+    {
+      "id": "a2-014-off-list-id-is-rejected",
+      "raw_name": "Department of Fisheries",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-animal-husbandry", "name": "Department of Animal Husbandry and Dairying", "similarity": 0.58, "via": "reference"},
+        {"entity_id": "min-agri", "name": "Ministry of Agriculture and Farmers Welfare", "similarity": 0.40, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "min-fisheries", "confidence": 0.97, "reasoning": "Fisheries has its own department."},
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    },
+    {
+      "id": "a2-015-scheme-exact",
+      "raw_name": "Pradhan Mantri Awas Yojana - Gramin",
+      "entity_type": "scheme",
+      "candidates": [
+        {"entity_id": "sch-pmay-g", "name": "Pradhan Mantri Awas Yojana Gramin", "similarity": 0.96, "via": "reference"},
+        {"entity_id": "sch-pmay-u", "name": "Pradhan Mantri Awas Yojana Urban", "similarity": 0.83, "via": "reference"}
+      ],
+      "expected": {"entity_id": "sch-pmay-g", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-016-scheme-rural-urban-ambiguous",
+      "raw_name": "Pradhan Mantri Awas Yojana",
+      "entity_type": "scheme",
+      "candidates": [
+        {"entity_id": "sch-pmay-g", "name": "Pradhan Mantri Awas Yojana Gramin", "similarity": 0.82, "via": "reference"},
+        {"entity_id": "sch-pmay-u", "name": "Pradhan Mantri Awas Yojana Urban", "similarity": 0.81, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": null, "confidence": 0.35, "reasoning": "The umbrella name covers both the rural and urban components and the string does not distinguish them."},
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    },
+    {
+      "id": "a2-017-scheme-acronym",
+      "raw_name": "MGNREGS",
+      "entity_type": "scheme",
+      "candidates": [
+        {"entity_id": "sch-mgnrega", "name": "Mahatma Gandhi National Rural Employment Guarantee Scheme", "similarity": 0.36, "via": "alias"}
+      ],
+      "adjudication": {"entity_id": "sch-mgnrega", "confidence": 0.96, "reasoning": "MGNREGS is the standard acronym of the scheme named in the single candidate."},
+      "expected": {"entity_id": "sch-mgnrega", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-018-scheme-alias-hit",
+      "raw_name": "PM-KISAN",
+      "entity_type": "scheme",
+      "candidates": [
+        {"entity_id": "sch-pm-kisan", "name": "Pradhan Mantri Kisan Samman Nidhi", "similarity": 0.34, "via": "alias"},
+        {"entity_id": "sch-pm-kusum", "name": "Pradhan Mantri Kisan Urja Suraksha evam Utthaan Mahabhiyan", "similarity": 0.33, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "sch-pm-kisan", "confidence": 0.94, "reasoning": "PM-KISAN is the published short name of the Kisan Samman Nidhi income support scheme, not of the solar energy scheme."},
+      "expected": {"entity_id": "sch-pm-kisan", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-019-scheme-typo",
+      "raw_name": "Jal Jeevan Mision",
+      "entity_type": "scheme",
+      "candidates": [
+        {"entity_id": "sch-jjm", "name": "Jal Jeevan Mission", "similarity": 0.93, "via": "reference"},
+        {"entity_id": "sch-amrut", "name": "Atal Mission for Rejuvenation and Urban Transformation", "similarity": 0.31, "via": "reference"}
+      ],
+      "expected": {"entity_id": "sch-jjm", "expected_tier": "trigram"}
+    },
+    {
+      "id": "a2-020-scheme-with-year-suffix",
+      "raw_name": "National Health Mission 2025-26",
+      "entity_type": "scheme",
+      "candidates": [
+        {"entity_id": "sch-nhm", "name": "National Health Mission", "similarity": 0.80, "via": "reference"},
+        {"entity_id": "sch-nhm-urban", "name": "National Urban Health Mission", "similarity": 0.72, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "sch-nhm", "confidence": 0.93, "reasoning": "The trailing year is a reporting period, not part of the scheme name. The umbrella mission is the match, not the urban sub-mission."},
+      "expected": {"entity_id": "sch-nhm", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-021-nested-department",
+      "raw_name": "Department of Expenditure, Ministry of Finance",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-finance", "name": "Ministry of Finance", "similarity": 0.55, "via": "reference"},
+        {"entity_id": "min-finance-expenditure", "name": "Department of Expenditure", "similarity": 0.53, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "min-finance-expenditure", "confidence": 0.94, "reasoning": "The department is named first and the ministry only as its parent, so the department is the more specific correct match."},
+      "expected": {"entity_id": "min-finance-expenditure", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-022-british-spelling",
+      "raw_name": "Ministry of Labour & Employment",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-labour", "name": "Ministry of Labor and Employment", "similarity": 0.85, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-labour", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-023-state-body-not-central",
+      "raw_name": "Maharashtra Jeevan Pradhikaran",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-jal-shakti", "name": "Ministry of Jal Shakti", "similarity": 0.36, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": null, "confidence": 0.2, "reasoning": "This is a state water supply authority and not a union ministry. No evidence found in the candidate list supports a match."},
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    },
+    {
+      "id": "a2-024-autonomous-body",
+      "raw_name": "Indian Council of Medical Research",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-health-research", "name": "Department of Health Research", "similarity": 0.41, "via": "reference"},
+        {"entity_id": "min-health", "name": "Ministry of Health and Family Welfare", "similarity": 0.38, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": null, "confidence": 0.6, "reasoning": "The council is an autonomous body funded through the health research department rather than a department itself, so mapping it to one would misattribute its spending."},
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    },
+    {
+      "id": "a2-025-demand-number",
+      "raw_name": "Demand No. 34 - Department of Space",
+      "entity_type": "demand",
+      "candidates": [
+        {"entity_id": "demand-034", "name": "demand-034", "similarity": 0.44, "via": "alias"}
+      ],
+      "adjudication": {"entity_id": "demand-034", "confidence": 0.95, "reasoning": "The string states demand number 34 and the single candidate is that demand."},
+      "expected": {"entity_id": "demand-034", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-026-whitespace-and-case",
+      "raw_name": "  ministry   of   DEFENCE  ",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-defence", "name": "Ministry of Defence", "similarity": 0.90, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-defence", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-027-civil-vs-defence-pensions",
+      "raw_name": "Defence Pensions",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-defence", "name": "Ministry of Defence", "similarity": 0.52, "via": "reference"},
+        {"entity_id": "min-defence-pensions", "name": "Defence Pensions", "similarity": 1.0, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-defence-pensions", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-028-near-tie-just-below-margin",
+      "raw_name": "Department of Rural Development",
+      "entity_type": "ministry",
+      "candidates": [
+        {"entity_id": "min-rural-dev", "name": "Department of Rural Development", "similarity": 0.99, "via": "reference"},
+        {"entity_id": "min-rural", "name": "Ministry of Rural Development", "similarity": 0.94, "via": "reference"}
+      ],
+      "expected": {"entity_id": "min-rural-dev", "expected_tier": "exact"}
+    },
+    {
+      "id": "a2-029-scheme-renamed",
+      "raw_name": "Swachh Bharat Mission Gramin Phase II",
+      "entity_type": "scheme",
+      "candidates": [
+        {"entity_id": "sch-sbm-g", "name": "Swachh Bharat Mission Gramin", "similarity": 0.86, "via": "reference"},
+        {"entity_id": "sch-sbm-u", "name": "Swachh Bharat Mission Urban", "similarity": 0.72, "via": "reference"}
+      ],
+      "adjudication": {"entity_id": "sch-sbm-g", "confidence": 0.93, "reasoning": "Phase II is a period of the rural mission rather than a separate scheme in the reference data."},
+      "expected": {"entity_id": "sch-sbm-g", "expected_tier": "agent"}
+    },
+    {
+      "id": "a2-030-empty-candidates-scheme",
+      "raw_name": "Chief Minister's Solar Pump Scheme",
+      "entity_type": "scheme",
+      "candidates": [],
+      "expected": {"entity_id": null, "expected_tier": "queued"}
+    }
+  ]
+}

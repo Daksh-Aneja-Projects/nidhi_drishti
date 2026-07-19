@@ -120,7 +120,7 @@ class TestRowsToRecords:
             page_number=12,
             confidence=score_table(GOOD_TABLE),
             header=tuple(GOOD_TABLE[0]),
-            unit_hint=unit,  # type: ignore[arg-type]
+            unit_hint=unit,
         )
 
     def test_records_use_the_unit_hint(self) -> None:
@@ -173,7 +173,7 @@ class TestAssistHook:
             rows=RAGGED_TABLE,
             page_number=1,
             page_text="Statement (₹ in crore)",
-            assist=worse_assist,  # type: ignore[arg-type]
+            assist=worse_assist,
         )
         assert result.extraction_method == "pdf_table"
         assert any("discarded" in note for note in result.notes)
@@ -188,7 +188,7 @@ class TestAssistHook:
             rows=RAGGED_TABLE,
             page_number=1,
             page_text="Statement (₹ in crore)",
-            assist=good_assist,  # type: ignore[arg-type]
+            assist=good_assist,
         )
         assert result.extraction_method == "agent_assisted"
         assert result.unit_hint is CRORE

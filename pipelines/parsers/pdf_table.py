@@ -271,9 +271,7 @@ def _finalise(
 
     if confidence.is_low and assist is not None:
         reason = "; ".join(confidence.reasons) or "confidence below threshold"
-        log.info(
-            "pdf.assist_invoked", page=page_number, score=confidence.score, reason=reason
-        )
+        log.info("pdf.assist_invoked", page=page_number, score=confidence.score, reason=reason)
         try:
             assisted = assist(
                 page_text=page_text,
@@ -298,8 +296,8 @@ def _finalise(
                 notes.append("assist returned a lower-confidence grid and was discarded")
 
     header_index, header = detect_header(rows)
-    unit_hint = find_unit_hint(header, page_text[:400]) if header else parse_unit_hint(
-        page_text[:400]
+    unit_hint = (
+        find_unit_hint(header, page_text[:400]) if header else parse_unit_hint(page_text[:400])
     )
     if unit_hint is None:
         notes.append(

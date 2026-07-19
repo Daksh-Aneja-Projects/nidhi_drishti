@@ -65,8 +65,7 @@ def table_rows(table: Any) -> list[list[str]]:
     rows: list[list[str]] = []
     for tr in table.find_all("tr"):
         cells = [
-            " ".join(cell.get_text(" ", strip=True).split())
-            for cell in tr.find_all(["td", "th"])
+            " ".join(cell.get_text(" ", strip=True).split()) for cell in tr.find_all(["td", "th"])
         ]
         if any(cells):
             rows.append(cells)

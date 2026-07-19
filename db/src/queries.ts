@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Data access for the web app and the public API.
  *
  * Every function here reads materialised views or canonical tables and never

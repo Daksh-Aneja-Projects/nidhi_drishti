@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Rebuild the materialised views. Called at the end of every pipeline run and
  * available manually for when a view definition changes.
  */

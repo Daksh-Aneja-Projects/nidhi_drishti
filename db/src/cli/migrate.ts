@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Forward-only migration runner.
  *
  * Migrations are plain SQL applied in filename order and recorded with a

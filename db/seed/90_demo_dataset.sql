@@ -125,14 +125,14 @@ INSERT INTO fiscal_fact
   (fy, entity_type, entity_id, stage, head, period_start, period_end, is_cumulative,
    amount_inr_cr, source_record_id, extraction_method, is_provisional)
 SELECT
-  fy, 'ministry', ministry_id, 'BE', 'total', NULL, NULL, FALSE, be_cr,
+  fy, 'ministry', ministry_id, 'BE', 'total', NULL::DATE, NULL::DATE, FALSE, be_cr,
   (SELECT source_record_id FROM source_record WHERE source_id = 'demo'
      AND artifact_key = 'demo/illustrative-dataset.sql'),
   'illustrative', FALSE
 FROM ministry_fy
 UNION ALL
 SELECT
-  fy, 'ministry', ministry_id, 'RE', 'total', NULL, NULL, FALSE, ROUND(be_cr * re_factor, 2),
+  fy, 'ministry', ministry_id, 'RE', 'total', NULL::DATE, NULL::DATE, FALSE, ROUND(be_cr * re_factor, 2),
   (SELECT source_record_id FROM source_record WHERE source_id = 'demo'
      AND artifact_key = 'demo/illustrative-dataset.sql'),
   'illustrative', FALSE
@@ -239,14 +239,14 @@ INSERT INTO fiscal_fact
   (fy, entity_type, entity_id, stage, head, period_start, period_end, is_cumulative,
    amount_inr_cr, source_record_id, extraction_method, is_provisional)
 SELECT
-  fy, 'national', 'india', 'BE', 'total', NULL, NULL, FALSE, national_be,
+  fy, 'national', 'india', 'BE', 'total', NULL::DATE, NULL::DATE, FALSE, national_be,
   (SELECT source_record_id FROM source_record WHERE source_id = 'demo'
      AND artifact_key = 'demo/illustrative-dataset.sql'),
   'illustrative', FALSE
 FROM national_fy
 UNION ALL
 SELECT
-  fy, 'national', 'india', 'RE', 'total', NULL, NULL, FALSE, national_re,
+  fy, 'national', 'india', 'RE', 'total', NULL::DATE, NULL::DATE, FALSE, national_re,
   (SELECT source_record_id FROM source_record WHERE source_id = 'demo'
      AND artifact_key = 'demo/illustrative-dataset.sql'),
   'illustrative', FALSE
@@ -345,7 +345,7 @@ INSERT INTO fiscal_fact
   (fy, entity_type, entity_id, stage, head, period_start, period_end, is_cumulative,
    amount_inr_cr, source_record_id, extraction_method, is_provisional)
 SELECT
-  fy, 'scheme', scheme_id, 'BE', 'total', NULL, NULL, FALSE, be_cr,
+  fy, 'scheme', scheme_id, 'BE', 'total', NULL::DATE, NULL::DATE, FALSE, be_cr,
   (SELECT source_record_id FROM source_record WHERE source_id = 'demo'
      AND artifact_key = 'demo/illustrative-dataset.sql'),
   'illustrative', FALSE
@@ -490,7 +490,7 @@ VALUES
   ('under_utilization', 'scheme', 'sch-pmay-urban', 'FY2024', 'high',
     jsonb_build_object('illustrative', true, 'released_cr', 1200.0, 'utilized_cr', 410.0, 'utilization_pct', 34.2),
     'Illustrative example (demo dataset). Reported utilisation trails released funds by a wide margin in this sample. Not a real finding.',
-    'pending', NULL, NULL, NULL),
+    'pending', NULL::DATE, NULL::DATE, NULL),
   ('over_burn', 'ministry', 'min-defence', 'FY2026', 'info',
     jsonb_build_object('illustrative', true, 'burn_ratio', 1.18),
     'Illustrative example (demo dataset). Cumulative spend is running ahead of the pace implied by the elapsed fiscal year in this sample. Not a real finding.',
@@ -498,7 +498,7 @@ VALUES
   ('spend_no_tender', 'scheme', 'sch-jal-jeevan-mission', 'FY2025', 'notable',
     jsonb_build_object('illustrative', true, 'released_cr', 950.0, 'tender_count', 1),
     'Illustrative example (demo dataset). Reported release activity is high relative to the number of matched public tenders in this sample. Not a real finding.',
-    'pending', NULL, NULL, NULL),
+    'pending', NULL::DATE, NULL::DATE, NULL),
   ('stat_outlier', 'national', 'india', 'FY2026', 'info',
     jsonb_build_object('illustrative', true, 'z_score', 2.3),
     'Illustrative example (demo dataset). A month-over-month change in the national cumulative series falls outside the typical range in this sample. Not a real finding.',
@@ -506,7 +506,7 @@ VALUES
   ('revision_swing', 'ministry', 'min-power', 'FY2024', 'notable',
     jsonb_build_object('illustrative', true, 'revision_cr', -85.0),
     'Illustrative example (demo dataset). A later snapshot of the cumulative series revised an earlier reported month downward in this sample. Not a real finding.',
-    'pending', NULL, NULL, NULL)
+    'pending', NULL::DATE, NULL::DATE, NULL)
 ON CONFLICT (rule_id, entity_type, entity_id, fy) DO UPDATE SET
   severity    = EXCLUDED.severity,
   metric      = EXCLUDED.metric,

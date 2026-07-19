@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Drop and recreate the public schema, then migrate and seed.
  *
  * Destructive by design and refuses to run against anything that does not look

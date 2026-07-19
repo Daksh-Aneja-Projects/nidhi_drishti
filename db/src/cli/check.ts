@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Run the docs/04 invariant checks and print the findings.
  *
  * Exits non-zero only on `error` severity. A `warn` is a real-world condition

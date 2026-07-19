@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Seed runner.
  *
  * Files in db/seed run in filename order and must be idempotent, because
@@ -17,6 +17,17 @@ const SEED_DIR = join(here, '..', '..', 'seed');
 
 const DEMO_THRESHOLD = 90;
 
+/**
+ * Several Windows editors and PowerShell itself write UTF-8 with a byte order
+ * mark. Postgres does not accept one at the head of a statement, and the
+ * resulting "syntax error at or near" message points at an invisible character,
+ * so the mark is removed here rather than left as a trap for whoever edits a
+ * seed file next.
+ */
+function stripBom(text: string): string {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
 function isDemoSeed(filename: string): boolean {
   const prefix = Number.parseInt(filename.slice(0, 2), 10);
   return Number.isFinite(prefix) && prefix >= DEMO_THRESHOLD;
@@ -31,7 +42,7 @@ async function seed(includeDemo: boolean): Promise<void> {
       console.log(`  skipped ${filename} (demo only, pass --demo to load)`);
       continue;
     }
-    const sql = await readFile(join(SEED_DIR, filename), 'utf8');
+    const sql = stripBom(await readFile(join(SEED_DIR, filename), 'utf8'));
     const started = Date.now();
     const client = await pool.connect();
     try {

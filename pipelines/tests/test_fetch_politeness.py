@@ -182,6 +182,29 @@ class TestAccessControlGuards:
             with pytest.raises(FetchError):
                 client.get("file:///etc/passwd")
 
+    def test_a_redirect_into_a_login_page_is_refused(self, settings: Settings) -> None:
+        """The final URL passes the same gate as the requested one.
+
+        Redirects are followed, so vetting only the entry URL is a hole a
+        portal can walk straight through. PFMS actually does this: a clean
+        looking report path answers 200 by redirecting to Login.aspx
+        (docs/13). The body of that page must never reach a parser, because a
+        pipeline that parses a login page writes garbage with a straight face.
+        """
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/robots.txt":
+                return httpx.Response(200, text=ROBOTS_ALLOW_ALL)
+            if request.url.path == "/SchemeReport.aspx":
+                return httpx.Response(
+                    302, headers={"location": "https://pfms.nic.in/Users/Login.aspx"}
+                )
+            return httpx.Response(200, content=b"<html>please sign in</html>")
+
+        with make_client(settings, handle, RecordingSleeper()) as client:
+            with pytest.raises(AccessControlled):
+                client.get("https://pfms.nic.in/SchemeReport.aspx")
+
 
 class TestRetries:
     def test_a_server_error_is_retried(self, settings: Settings) -> None:

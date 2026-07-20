@@ -14,6 +14,11 @@ if (existsSync(rootEnv)) {
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // A dev server and a concurrent production build share .next by default and
+  // corrupt each other's manifests, which shows up as an unexplained 500 with a
+  // missing routes-manifest.json. Setting NEXT_DIST_DIR gives a parallel task
+  // its own output directory. Unset, behaviour is unchanged.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   // Workspace packages ship as TypeScript source rather than as a build step,
   // so Next has to compile them itself.
   transpilePackages: ['@nidhi/core', '@nidhi/db'],

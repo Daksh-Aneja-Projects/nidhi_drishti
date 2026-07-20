@@ -338,6 +338,14 @@ class PoliteClient:
                 # page moved, which is a drift signal for the source module.
                 raise HttpStatusError(url, response.status_code, response.text[:200])
 
+            # Redirects are followed, so the URL that was vetted before the
+            # request is not necessarily the URL that answered. This is not
+            # hypothetical: PFMS answers 200 on a plausible report path and
+            # redirects it to Login.aspx (docs/13). A login page fetched via a
+            # clean-looking entry URL is still a login page, so the final URL
+            # passes through the same gate as the first.
+            self._check_url(str(response.url))
+
             return FetchResult(
                 url=url,
                 final_url=str(response.url),

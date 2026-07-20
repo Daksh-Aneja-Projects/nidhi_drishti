@@ -50,8 +50,12 @@ SOURCE_ID = "pfms_pub"
 URLS: dict[str, str] = {
     "home": "https://pfms.nic.in/",
     "dashboard": "https://pfmsdashboard.gov.in/",
-    # Scheme-wise release report, public view.
-    "scheme_releases": "https://pfms.nic.in/Users/Dashboard/SchemeWiseReleases.aspx",
+    # There is no known public per-scheme release report URL. The path that was
+    # guessed here earlier (SchemeWiseReleases.aspx) redirects to a login page,
+    # and docs/08 forbids touching authenticated endpoints under any
+    # circumstances, so it was removed (docs/13, 20 Jul 2026 audit). Scheme
+    # releases must come from the public dashboard widgets rendered from the
+    # two URLs above, or not at all.
 }
 
 SCHEME_TABLE_HEADERS = ("scheme", "release")
@@ -233,7 +237,11 @@ def run(
     outcome = RunOutcome(source_id=SOURCE_ID, status="ok")
     owns_client = client is None
     http = client or PoliteClient(settings)
-    target = url or URLS["scheme_releases"]
+    # The public dashboard is the only compliant entry point. The old default,
+    # a guessed SchemeWiseReleases.aspx path, turned out to redirect to a login
+    # page (docs/13); an explicit url argument remains available for a future
+    # verified public report path.
+    target = url or URLS["dashboard"]
 
     try:
         with PipelineRun(SOURCE_ID, conn, dry_run=dry_run) as run_ctx:

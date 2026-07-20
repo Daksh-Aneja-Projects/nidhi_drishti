@@ -1,34 +1,63 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import * as echarts from 'echarts/core';
-import { BarChart, LineChart, TreemapChart, CustomChart } from 'echarts/charts';
-import {
-  DatasetComponent,
-  GridComponent,
-  LegendComponent,
-  MarkLineComponent,
-  TooltipComponent,
-} from 'echarts/components';
-import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsOption } from 'echarts';
 import { Table } from 'lucide-react';
 import { Icon } from '@/components/icon';
 import { track } from '@/lib/analytics';
 import { strings } from '@/lib/strings';
 
-echarts.use([
-  BarChart,
-  LineChart,
-  TreemapChart,
-  CustomChart,
-  GridComponent,
-  TooltipComponent,
-  LegendComponent,
-  DatasetComponent,
-  MarkLineComponent,
-  CanvasRenderer,
-]);
+/** Minimal surface of an ECharts instance, so the module stays type-only imported. */
+interface EChartsInstance {
+  setOption: (option: EChartsOption, notMerge?: boolean) => void;
+  resize: () => void;
+  dispose: () => void;
+  on: (event: string, handler: (params: unknown) => void) => void;
+  off: (event: string, handler: (params: unknown) => void) => void;
+}
+
+let echartsPromise: Promise<{
+  init: (el: HTMLElement, theme?: unknown, opts?: { renderer: 'canvas' }) => EChartsInstance;
+}> | null = null;
+
+/**
+ * Load ECharts on demand, once per session.
+ *
+ * A static import puts the whole charting library in the first load of every
+ * page that draws anything, which took the chart pages to roughly 400 kB and
+ * past the LCP budget in docs/06. Journalists read this on phones on mobile
+ * data, so the library is code split and fetched after the page is interactive.
+ * The figures themselves are server rendered text and the data-table fallback
+ * is already in the DOM, so nothing a reader needs waits on this.
+ */
+async function loadECharts() {
+  if (!echartsPromise) {
+    echartsPromise = (async () => {
+      const [core, charts, components, renderers] = await Promise.all([
+        import('echarts/core'),
+        import('echarts/charts'),
+        import('echarts/components'),
+        import('echarts/renderers'),
+      ]);
+      core.use([
+        charts.BarChart,
+        charts.LineChart,
+        charts.TreemapChart,
+        charts.CustomChart,
+        components.GridComponent,
+        components.TooltipComponent,
+        components.LegendComponent,
+        components.DatasetComponent,
+        components.MarkLineComponent,
+        renderers.CanvasRenderer,
+      ]);
+      return core as unknown as {
+        init: (el: HTMLElement, theme?: unknown, opts?: { renderer: 'canvas' }) => EChartsInstance;
+      };
+    })();
+  }
+  return echartsPromise;
+}
 
 /**
  * Base chart wrapper.
@@ -105,36 +134,46 @@ interface ChartProps {
 
 export function Chart({ chartId, option, height = 280, ariaLabel, table, onSelect }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const instanceRef = useRef<echarts.ECharts | null>(null);
+  const instanceRef = useRef<EChartsInstance | null>(null);
+  const [ready, setReady] = useState(false);
   const [showTable, setShowTable] = useState(false);
   const tableId = useId();
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const instance = echarts.init(containerRef.current, undefined, { renderer: 'canvas' });
-    instanceRef.current = instance;
+    let disposed = false;
+    let instance: EChartsInstance | null = null;
+    let resizeObserver: ResizeObserver | null = null;
 
-    const resizeObserver = new ResizeObserver(() => instance.resize());
-    resizeObserver.observe(containerRef.current);
+    void (async () => {
+      const echarts = await loadECharts();
+      // The component can unmount while the library is still downloading.
+      if (disposed || !containerRef.current) return;
+      instance = echarts.init(containerRef.current, undefined, { renderer: 'canvas' });
+      instanceRef.current = instance;
+      resizeObserver = new ResizeObserver(() => instance?.resize());
+      resizeObserver.observe(containerRef.current);
+      setReady(true);
+    })();
 
     return () => {
-      resizeObserver.disconnect();
-      instance.dispose();
+      disposed = true;
+      resizeObserver?.disconnect();
+      instance?.dispose();
       instanceRef.current = null;
     };
   }, []);
 
   useEffect(() => {
     const instance = instanceRef.current;
-    if (!instance) return;
+    if (!instance || !ready) return;
     // `true` replaces the option wholesale, so a series that disappears between
     // renders is actually removed rather than merged and left on screen.
     instance.setOption(option, true);
-  }, [option]);
+  }, [option, ready]);
 
   useEffect(() => {
     const instance = instanceRef.current;
-    if (!instance) return;
+    if (!instance || !ready) return;
     function handleClick(params: unknown) {
       const name = (params as { name?: string }).name;
       track('chart_interacted', { chart_id: chartId, action: 'drill' });
@@ -144,7 +183,7 @@ export function Chart({ chartId, option, height = 280, ariaLabel, table, onSelec
     return () => {
       instance.off('click', handleClick);
     };
-  }, [chartId, onSelect]);
+  }, [chartId, onSelect, ready]);
 
   return (
     <figure className="m-0">

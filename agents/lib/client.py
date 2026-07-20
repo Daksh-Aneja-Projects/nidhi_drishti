@@ -126,7 +126,7 @@ class AnthropicTransport:
 
     def __init__(self, api_key: str, *, timeout: float = 180.0) -> None:
         try:
-            import anthropic  # noqa: PLC0415 - deliberately lazy
+            import anthropic  # deliberately lazy: the tests never need the SDK
         except ImportError as exc:  # pragma: no cover - depends on the environment
             raise AgentCallError(
                 "The 'anthropic' package is not installed. Add it to the root pyproject "
@@ -201,8 +201,11 @@ def _usage(response: Any) -> tuple[int | None, int | None]:
         usage = response.get("usage")
     if usage is None:
         return None, None
-    getter = usage.get if isinstance(usage, Mapping) else lambda k: getattr(usage, k, None)  # type: ignore[assignment]
-    raw_in, raw_out = getter("input_tokens"), getter("output_tokens")
+    if isinstance(usage, Mapping):
+        raw_in, raw_out = usage.get("input_tokens"), usage.get("output_tokens")
+    else:
+        raw_in = getattr(usage, "input_tokens", None)
+        raw_out = getattr(usage, "output_tokens", None)
     return (
         int(raw_in) if raw_in is not None else None,
         int(raw_out) if raw_out is not None else None,
@@ -355,9 +358,11 @@ class AgentClient:
         if max_attempts < 1:
             raise ValueError("max_attempts must be at least 1.")
 
-        content = user_content if isinstance(user_content, list) else [
-            {"type": "text", "text": str(user_content)}
-        ]
+        content = (
+            user_content
+            if isinstance(user_content, list)
+            else [{"type": "text", "text": str(user_content)}]
+        )
         last_error: str = "no attempt was made"
         for attempt in range(1, max_attempts + 1):
             result = self.complete(

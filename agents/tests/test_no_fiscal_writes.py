@@ -35,7 +35,7 @@ FORBIDDEN_STATEMENTS = [
     "INSERT INTO fiscal_fact (fy, amount_inr_cr) VALUES ('FY2026', 1)",
     "insert into fiscal_fact select * from staging_fact",
     "INSERT INTO public.fiscal_fact (fy) VALUES ('FY2026')",
-    'INSERT INTO "fiscal_fact" (fy) VALUES (\'FY2026\')',
+    "INSERT INTO \"fiscal_fact\" (fy) VALUES ('FY2026')",
     "UPDATE fiscal_fact SET amount_inr_cr = 0 WHERE fact_id = 1",
     "UPDATE ONLY fiscal_fact SET amount_inr_cr = 0",
     "DELETE FROM fiscal_fact WHERE fact_id = 1",
@@ -85,9 +85,9 @@ def test_guard_permits_the_agent_allowlist(sql: str) -> None:
 
 def test_evidence_item_is_summary_only() -> None:
     assert_write_allowed("UPDATE evidence_item SET summary = 'x' WHERE evidence_id = 1")
-    with pytest.raises(FiscalWriteForbidden, match="only set evidence_item.summary"):
+    with pytest.raises(FiscalWriteForbidden, match=r"only set evidence_item\.summary"):
         assert_write_allowed("UPDATE evidence_item SET title = 'x' WHERE evidence_id = 1")
-    with pytest.raises(FiscalWriteForbidden, match="only set evidence_item.summary"):
+    with pytest.raises(FiscalWriteForbidden, match=r"only set evidence_item\.summary"):
         assert_write_allowed(
             "UPDATE evidence_item SET summary = 'x', ministry_id = 'min-y' WHERE evidence_id = 1"
         )
@@ -119,9 +119,8 @@ def test_a_commented_out_write_is_not_a_target() -> None:
 
 def test_guarded_connection_blocks_at_the_cursor(conn: GuardedConnection, raw_conn) -> None:
     """The guard sits on the connection, so no caller can route around it."""
-    with pytest.raises(FiscalWriteForbidden):
-        with conn.cursor() as cur:
-            cur.execute("INSERT INTO fiscal_fact (fy) VALUES (%s)", ("FY2026",))
+    with pytest.raises(FiscalWriteForbidden), conn.cursor() as cur:
+        cur.execute("INSERT INTO fiscal_fact (fy) VALUES (%s)", ("FY2026",))
     with pytest.raises(FiscalWriteForbidden):
         conn.execute("UPDATE fiscal_fact SET amount_inr_cr = 0")
     assert raw_conn.executed == [], "the statement must never reach the driver"
@@ -153,10 +152,12 @@ def test_every_sql_constant_in_the_package_passes_the_guard() -> None:
         if "tests" in path.parts:
             continue
         for value in _string_constants(path):
-            lowered = value.lower()
-            if not any(
-                verb in lowered
-                for verb in ("insert into", "update ", "delete from", "truncate ", "merge into")
+            # Only strings that actually look like a statement. Prose that
+            # happens to contain the word "update" is documentation, and
+            # feeding it to a SQL parser would produce noise, not findings.
+            stripped = value.strip().lower()
+            if not stripped.startswith(
+                ("insert", "update", "delete", "truncate", "merge", "with", "select")
             ):
                 continue
             if not statement_write_targets(value):

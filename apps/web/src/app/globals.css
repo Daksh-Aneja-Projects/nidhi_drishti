@@ -18,10 +18,14 @@
   --color-paper-raised: #f8f9f7;
   --color-paper-sunk: #e4e7e3;
 
-  /* --- Ink. Blue-black, the colour of a fountain pen on a form. --- */
-  --color-ink: #16202b;
-  --color-ink-soft: #48555f;
-  --color-ink-faint: #6f7c85;
+  /* --- Ink. Blue-black, the colour of a fountain pen on a form.
+         Every one of these clears 4.5:1 against paper. `faint` is the eyebrow
+         label tone, which is small and appears on every screen, so it is the
+         one most easily pushed too light: at #6f7c85 it measured 3.77:1 and
+         failed. --- */
+  --color-ink: #16202b;        /* 14.49:1 */
+  --color-ink-soft: #48555f;   /*  6.74:1 */
+  --color-ink-faint: #5f6b73;  /*  4.75:1 */
 
   /* --- Rules. The ledger's own lines. --- */
   --color-rule: #ccd2cc;
@@ -38,9 +42,13 @@
          The moment it starts decorating, it stops meaning anything. --- */
   --color-seal: #9e2b25;
 
-  /* --- Absence. Distinct from every value tone, so "not reported" can never
-         be read as a quantity. --- */
-  --color-unreported: #a4a9a2;
+  /* --- Absence. A neutral grey, distinct in hue from the blue-black ink, so
+         "not reported" never reads as a quantity.
+         It is muted, but "Not reported" is meaningful text a reader must be
+         able to read, so it carries a text-legible 4.79:1 rather than the
+         near-invisible grey the idea of "absent" invites. Absence is
+         communicated by hue and by hatching, not by being hard to see. --- */
+  --color-unreported: #666a65;
 
   /* --- Type. IBM Plex across three roles. Plex carries Devanagari in all
          three, so the planned Hindi interface will not need a second type

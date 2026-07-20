@@ -143,7 +143,11 @@ class TenderLine:
     url: str | None = None
 
     def as_prompt_line(self) -> str:
-        value = f"{self.value_inr_cr} INR crore" if self.value_inr_cr is not None else "value not published"
+        value = (
+            f"{self.value_inr_cr} INR crore"
+            if self.value_inr_cr is not None
+            else "value not published"
+        )
         return (
             f"- [tender:{self.tender_id}] {self.title} ({self.status}, {value}, "
             f"published {self.published_date.isoformat() if self.published_date else 'undated'}, "

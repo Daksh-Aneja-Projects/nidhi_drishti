@@ -29,9 +29,9 @@ was given**, and that the narrative attributes each number to the right stage.
 4. Check that no claim of activity, procurement or outcome appears that is not
    present in the facts. A sentence saying no evidence found is correct and
    passes; a sentence asserting something the facts do not contain does not.
-5. Check the vocabulary. Never use, and fail any narrative that uses, the words
-   scam, fraud, siphoned, corrupt, embezzled, looted or misappropriated, or any
-   synonym or insinuation of wrongdoing.
+5. Check the vocabulary. Never use the words scam, fraud, siphoned, corrupt,
+   embezzled, looted or misappropriated in your own findings, and fail any
+   narrative that uses them or any synonym or insinuation of wrongdoing.
 
 ## Judgement
 

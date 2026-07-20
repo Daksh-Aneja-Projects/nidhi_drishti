@@ -42,7 +42,10 @@ _DATES = re.compile(
 _QUARTER = re.compile(r"\bQ[1-4]\b", re.IGNORECASE)
 
 #: A quantity: optional sign, Indian or Western digit grouping, optional decimals.
-_NUMBER = re.compile(r"[-+]?\d{1,3}(?:,\d{2,3})*(?:\.\d+)?|[-+]?\d+(?:\.\d+)?")
+#: The grouped branch requires at least one comma group. With ``*`` it would
+#: match the first three digits of an ungrouped "3000" and leave a stray "0"
+#: behind, which would then look like an unsupported figure.
+_NUMBER = re.compile(r"[-+]?\d{1,3}(?:,\d{2,3})+(?:\.\d+)?|[-+]?\d+(?:\.\d+)?")
 
 
 @dataclass(frozen=True, slots=True)

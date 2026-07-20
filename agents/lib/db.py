@@ -61,18 +61,31 @@ FISCAL_TABLES: frozenset[str] = frozenset(
 #: two-sentence descriptive summary, never the title, url, date or embedding.
 EVIDENCE_ITEM_WRITABLE_COLUMNS: frozenset[str] = frozenset({"summary"})
 
-_WRITE_VERBS = ("insert", "update", "delete", "truncate", "copy", "merge", "drop", "alter", "create")
+_WRITE_VERBS = (
+    "insert",
+    "update",
+    "delete",
+    "truncate",
+    "copy",
+    "merge",
+    "drop",
+    "alter",
+    "create",
+)
 
-_INSERT_RE = re.compile(r"\binsert\s+into\s+(?:only\s+)?([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
+#: The optional leading quote matters: ``INSERT INTO "fiscal_fact"`` is a write
+#: to fiscal_fact, and a pattern that only accepted bare identifiers would let
+#: the quoted form through.
+_IDENT = r"\"?[a-z_][a-z0-9_.\"]*"
+
+_INSERT_RE = re.compile(rf"\binsert\s+into\s+(?:only\s+)?({_IDENT})", re.IGNORECASE)
 # The negative lookbehind and lookahead keep ``ON CONFLICT DO UPDATE SET`` from
 # being read as an update of a table called "set". Upserts are the normal shape
 # of every write in this package, so getting this wrong would refuse everything.
-_UPDATE_RE = re.compile(
-    r"(?<!do )\bupdate\s+(?:only\s+)?(?!set\b)([a-z_][a-z0-9_.\"]*)", re.IGNORECASE
-)
-_DELETE_RE = re.compile(r"\bdelete\s+from\s+(?:only\s+)?([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
-_TRUNCATE_RE = re.compile(r"\btruncate\s+(?:table\s+)?([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
-_MERGE_RE = re.compile(r"\bmerge\s+into\s+([a-z_][a-z0-9_.\"]*)", re.IGNORECASE)
+_UPDATE_RE = re.compile(rf"(?<!do )\bupdate\s+(?:only\s+)?(?!set\b)({_IDENT})", re.IGNORECASE)
+_DELETE_RE = re.compile(rf"\bdelete\s+from\s+(?:only\s+)?({_IDENT})", re.IGNORECASE)
+_TRUNCATE_RE = re.compile(rf"\btruncate\s+(?:table\s+)?({_IDENT})", re.IGNORECASE)
+_MERGE_RE = re.compile(rf"\bmerge\s+into\s+({_IDENT})", re.IGNORECASE)
 _DDL_RE = re.compile(r"^\s*(drop|alter|create)\b", re.IGNORECASE)
 _UPDATE_SET_RE = re.compile(r"\bset\b(.*?)(?:\bwhere\b|\breturning\b|$)", re.IGNORECASE | re.DOTALL)
 _ASSIGNMENT_RE = re.compile(r"([a-z_][a-z0-9_]*)\s*=", re.IGNORECASE)
@@ -337,9 +350,7 @@ ON CONFLICT DO NOTHING
 """
 
 
-def link_flag_evidence(
-    conn: GuardedConnection, flag_id: int, evidence_ids: Sequence[int]
-) -> int:
+def link_flag_evidence(conn: GuardedConnection, flag_id: int, evidence_ids: Sequence[int]) -> int:
     if not evidence_ids:
         return 0
     with conn.cursor() as cur:

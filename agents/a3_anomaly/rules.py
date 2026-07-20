@@ -139,9 +139,11 @@ class Measures:
     def q4_amount(self) -> Decimal | None:
         """Spend in fiscal Q4, which is January, February and March."""
         months = [self.monthly_amounts.get(i) for i in (10, 11, 12)]
-        if any(m is None for m in months):
+        if any(month is None for month in months):
+            # A missing month means the quarter cannot be totalled. It is not
+            # zero, and summing what is present would understate the quarter.
             return None
-        return sum(months, Decimal(0))  # type: ignore[arg-type]
+        return sum((month for month in months if month is not None), Decimal(0))
 
     def fy_reported_total(self) -> Decimal | None:
         if not self.monthly_amounts:

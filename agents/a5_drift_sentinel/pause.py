@@ -46,7 +46,7 @@ class PauseRecord:
             source_id=str(data["source_id"]),
             reason=str(data.get("reason", "")),
             paused_at=datetime.fromisoformat(str(data["paused_at"])),
-            run_id=int(data["run_id"]) if data.get("run_id") is not None else None,
+            run_id=int(str(data["run_id"])) if data.get("run_id") is not None else None,
         )
 
 

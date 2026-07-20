@@ -10,7 +10,7 @@ transcribe puts the error where a unit test can find it.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -22,6 +22,9 @@ from pipelines.parsers.inr_amounts import (
     AmountParseError,
     parse_amount_cr,
 )
+
+#: NUMERIC(20,2) in INR crore, matching db/migrations/0003.
+_CRORE_QUANTUM = Decimal("0.01")
 
 #: Below this a row never reaches staging. docs/05 A1: the deterministic parser
 #: is first, the model is a fallback, and a human is the final gate.
@@ -155,4 +158,7 @@ def resolve_amount(row: ExtractedRow) -> ResolvedRow:
             row=row,
             conversion_error="The transcribed cell reads as 'not reported', so there is no figure.",
         )
-    return ResolvedRow(row=row, amount_inr_cr=parsed)
+    # Quantised to the two decimal places NUMERIC(20,2) actually holds, so the
+    # figure a reviewer approves is the figure that would be stored. A rupee
+    # amount converted to crore otherwise carries seven meaningless decimals.
+    return ResolvedRow(row=row, amount_inr_cr=parsed.quantize(_CRORE_QUANTUM, ROUND_HALF_UP))

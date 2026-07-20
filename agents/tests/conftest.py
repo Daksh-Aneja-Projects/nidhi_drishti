@@ -28,7 +28,6 @@ from pipelines.lib.config import (
     Settings,
 )
 
-
 # ---------------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------------
@@ -243,11 +242,7 @@ class FakeRawConnection:
 
     def params_for(self, fragment: str) -> list[Any]:
         collapsed = re.sub(r"\s+", " ", fragment)
-        return [
-            params
-            for sql, params in self.executed
-            if collapsed in re.sub(r"\s+", " ", sql)
-        ]
+        return [params for sql, params in self.executed if collapsed in re.sub(r"\s+", " ", sql)]
 
 
 @pytest.fixture

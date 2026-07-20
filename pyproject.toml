@@ -7,6 +7,9 @@ requires-python = ">=3.12"
 license = { text = "MIT" }
 
 dependencies = [
+    # Agent layer (agents/). Imported lazily by agents.lib.client, so the test
+    # suite runs without it, but a live agent run needs it present.
+    "anthropic>=0.69",
     "httpx>=0.27",
     "pydantic>=2.7",
     "pandas>=2.2",
@@ -105,8 +108,10 @@ exclude = ["node_modules", "\\.venv"]
 # double, so the structural checks are relaxed here rather than papered over
 # with casts in every test.
 [[tool.mypy.overrides]]
-module = ["pipelines.tests.*"]
+module = ["pipelines.tests.*", "agents.tests.*"]
 disallow_untyped_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
 disable_error_code = ["arg-type", "no-untyped-def"]
 
 [tool.coverage.run]

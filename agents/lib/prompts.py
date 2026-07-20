@@ -96,7 +96,10 @@ class Prompt:
 
 
 def validate_prompt_text(name: str, text: str) -> None:
-    missing = [marker for marker in REQUIRED_PROMPT_MARKERS if marker not in text]
+    # Whitespace-collapsed, because a prompt is prose and a guardrail sentence
+    # that happens to wrap across two lines is still the guardrail sentence.
+    flattened = " ".join(text.split())
+    missing = [marker for marker in REQUIRED_PROMPT_MARKERS if marker not in flattened]
     if missing:
         raise PromptError(
             f"Prompt {name!r} is missing the mandatory guardrail text {missing}. Every prompt "

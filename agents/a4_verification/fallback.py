@@ -58,12 +58,12 @@ def render_fallback(bundle: FactBundle) -> str:
     parts.append("## Observable activity")
     if bundle.tenders:
         for tender in bundle.tenders:
-            value = crore(tender.value_inr_cr)
+            tender_value = crore(tender.value_inr_cr)
             published = (
                 tender.published_date.isoformat() if tender.published_date else "date not published"
             )
             parts.append(
-                f"- {tender.title} ({tender.status}, {value}, published {published}) "
+                f"- {tender.title} ({tender.status}, {tender_value}, published {published}) "
                 f"[tender:{tender.tender_id}]"
             )
     else:

@@ -122,7 +122,11 @@ function rgbToHex(rgb: [number, number, number]): string {
 export function burnColor(burnRatio: Amount): string {
   // Missing data gets a desaturated tone of its own, outside the scale, so it
   // can never be mistaken for a value sitting at the neutral midpoint.
-  if (isNotReported(burnRatio)) return '#a4a9a2';
+  //
+  // Tuned for a filled shape rather than for text: WCAG asks 3:1 of a graphical
+  // object against its background, where the `--color-unreported` text token is
+  // darker still to clear 4.5:1. Same idea, two jobs.
+  if (isNotReported(burnRatio)) return '#7f847d';
   const ratio = Math.max(0, Math.min(2, burnRatio));
   let lower = BURN_SCALE_STOPS[0]!;
   let upper = BURN_SCALE_STOPS[BURN_SCALE_STOPS.length - 1]!;

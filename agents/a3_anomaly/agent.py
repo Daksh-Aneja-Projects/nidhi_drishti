@@ -275,8 +275,11 @@ class AnomalyAgent:
         if banned:
             return f"accusatory vocabulary {banned}"
         allowed = collect_allowed_values(hit.metric_with_limits())
-        # Thresholds are quoted in the prose and are part of the rule, so they
-        # count as facts the explanation may state.
+        # The rule's own description is generated deterministically from the
+        # same measurement, and renders fractions as percentages. A model that
+        # quotes "75.0 percent" where the metric holds 0.7500 is quoting the
+        # rule, not inventing a figure, so both forms are permitted.
+        allowed |= collect_allowed_values(hit.description)
         allowed |= {Decimal(100)}
         stray = unsupported_numbers(answer.explanation, allowed)
         if stray:

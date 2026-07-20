@@ -86,7 +86,8 @@ class SuiteReport:
 
 
 def load_fixture(name: str) -> dict[str, Any]:
-    return json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
+    data: dict[str, Any] = json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
+    return data
 
 
 # ---------------------------------------------------------------------------
@@ -111,9 +112,7 @@ def run_a1(fixture: dict[str, Any] | None = None) -> SuiteReport:
         resolved = [resolve_amount(row) for row in result.rows]
         usable = [r for r in resolved if not r.needs_review]
         review = [r for r in resolved if r.needs_review]
-        amounts = [
-            str(r.amount_inr_cr) for r in resolved if r.amount_inr_cr is not None
-        ]
+        amounts = [str(r.amount_inr_cr) for r in resolved if r.amount_inr_cr is not None]
         stages = [r.row.stage for r in resolved]
 
         problems: list[str] = []
@@ -206,9 +205,7 @@ def bundle_from_fixture(spec: dict[str, Any]) -> FactBundle:
             tender_id=str(item["tender_id"]),
             title=str(item["title"]),
             status=str(item["status"]),
-            value_inr_cr=(
-                Decimal(str(item["value_inr_cr"])) if item.get("value_inr_cr") else None
-            ),
+            value_inr_cr=(Decimal(str(item["value_inr_cr"])) if item.get("value_inr_cr") else None),
             published_date=_date(item.get("published_date")),
         )
         for item in spec.get("tenders", [])

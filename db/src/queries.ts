@@ -897,6 +897,207 @@ export async function hasIllustrativeData(): Promise<boolean> {
   return row?.present ?? false;
 }
 
+/* ------------------------------------------------------------------ *
+ * Digest and feeds (docs/07, the v1.1 distribution line)
+ * ------------------------------------------------------------------ */
+
+/**
+ * A signal as it appears in a feed or a digest edition.
+ *
+ * `publishedAt` is the moment the signal became publishable, which is when a
+ * reviewer approved it. It is COALESCEd onto `created_at` because a signal at
+ * the lowest severity can be approved without a review timestamp, and a digest
+ * that silently dropped those would under-report the day.
+ *
+ * It is a separate field rather than a reuse of `createdAt` because the two
+ * answer different questions: when the rule fired, and when a person let it out.
+ */
+export interface PublishedFlag extends AnomalyFlag {
+  publishedAt: string;
+}
+
+/**
+ * The instant a flag became publishable, in the timezone the site displays.
+ *
+ * A digest edition is a calendar day in India, so the bucketing has to happen
+ * in Asia/Kolkata. Doing it in UTC would file everything approved between
+ * midnight and half past five in the morning IST under the previous day.
+ */
+const PUBLISHED_AT_SQL = `COALESCE(f.reviewed_at, f.created_at)`;
+const PUBLISHED_DAY_SQL = `(${PUBLISHED_AT_SQL} AT TIME ZONE 'Asia/Kolkata')::DATE`;
+
+interface PublishedFlagRow extends FlagRow {
+  published_at: Date;
+}
+
+/**
+ * Attach evidence to a set of flag rows in one round trip.
+ *
+ * The same shape `listFlags` builds inline. It is duplicated rather than
+ * factored out of that function because `listFlags` is depended on by the
+ * public API and the pages, and this module's rule is that new surfaces are
+ * appended rather than existing ones reworked underneath them.
+ */
+async function loadEvidenceByFlag(flagIds: readonly number[]): Promise<Map<number, EvidenceItem[]>> {
+  const byFlag = new Map<number, EvidenceItem[]>();
+  if (flagIds.length === 0) return byFlag;
+  const rows = await query<EvidenceRow & { flag_id: number }>(
+    `SELECT fe.flag_id, e.evidence_id, e.kind, e.title, e.url, e.published_date,
+            e.ministry_id, e.scheme_id, e.summary
+     FROM anomaly_flag_evidence fe
+     JOIN evidence_item e ON e.evidence_id = fe.evidence_id
+     WHERE fe.flag_id = ANY($1::BIGINT[])
+     ORDER BY e.published_date DESC NULLS LAST`,
+    [flagIds],
+  );
+  for (const row of rows) {
+    const list = byFlag.get(Number(row.flag_id)) ?? [];
+    list.push({
+      evidenceId: Number(row.evidence_id),
+      kind: row.kind as EvidenceKind,
+      title: row.title,
+      url: row.url,
+      publishedDate: row.published_date,
+      ministryId: row.ministry_id,
+      schemeId: row.scheme_id,
+      summary: row.summary,
+    });
+    byFlag.set(Number(row.flag_id), list);
+  }
+  return byFlag;
+}
+
+export interface PublishedFlagOptions {
+  /** An IST calendar day, `YYYY-MM-DD`. Omitted means the most recent, whenever they were approved. */
+  day?: string;
+  /** Restricts to one ministry and the schemes that sit under it. */
+  ministryId?: string;
+  limit?: number;
+}
+
+/**
+ * Approved signals, newest first, for the feeds and the digest.
+ *
+ * `status = 'approved'` is written into the SQL as a literal with no parameter
+ * and no option to override it. That is the point of this function existing
+ * beside `listFlags` rather than as another flag on it: a distribution surface
+ * republishes into places we cannot recall, so there must be no argument any
+ * caller can pass that puts an unreviewed signal into a feed (docs/05 A3).
+ *
+ * Ordering is by publication time rather than by severity, because a feed is a
+ * chronology. Severity ordering belongs on the page, where a reader is
+ * browsing rather than being notified.
+ */
+export async function listPublishedFlags(
+  options: PublishedFlagOptions = {},
+): Promise<PublishedFlag[]> {
+  const rows = await query<PublishedFlagRow>(
+    `SELECT f.flag_id, f.rule_id, f.entity_type, f.entity_id,
+            COALESCE(m.name, s.name, f.entity_id) AS entity_name,
+            f.fy, f.severity, f.metric, f.explanation, f.status, f.created_at,
+            ${PUBLISHED_AT_SQL} AS published_at
+     FROM anomaly_flag f
+     LEFT JOIN ministry m ON f.entity_type = 'ministry' AND m.ministry_id = f.entity_id
+     LEFT JOIN scheme   s ON f.entity_type = 'scheme'   AND s.scheme_id   = f.entity_id
+     WHERE f.status = 'approved'
+       AND ($1::DATE IS NULL OR ${PUBLISHED_DAY_SQL} = $1::DATE)
+       AND ($2::TEXT IS NULL
+            OR (f.entity_type = 'ministry' AND f.entity_id = $2)
+            OR (f.entity_type = 'scheme' AND s.ministry_id = $2))
+     ORDER BY ${PUBLISHED_AT_SQL} DESC, f.flag_id DESC
+     LIMIT $3`,
+    [options.day ?? null, options.ministryId ?? null, options.limit ?? 50],
+  );
+  if (rows.length === 0) return [];
+
+  const evidenceByFlag = await loadEvidenceByFlag(rows.map((row) => Number(row.flag_id)));
+
+  return rows.map((row) => ({
+    flagId: Number(row.flag_id),
+    ruleId: row.rule_id as AnomalyRuleId,
+    entityType: row.entity_type as EntityType,
+    entityId: row.entity_id,
+    entityName: row.entity_name ?? row.entity_id,
+    fy: row.fy as FiscalYear,
+    severity: row.severity as Severity,
+    metric: row.metric,
+    explanation: row.explanation,
+    status: row.status as FlagStatus,
+    createdAt: row.created_at.toISOString(),
+    publishedAt: row.published_at.toISOString(),
+    evidence: evidenceByFlag.get(Number(row.flag_id)) ?? [],
+  }));
+}
+
+export interface PublishedEvidenceOptions {
+  /** Publication day of the item itself, `YYYY-MM-DD`. */
+  day?: string;
+  ministryId?: string;
+  limit?: number;
+}
+
+/**
+ * Evidence items that already carry a written summary.
+ *
+ * The summary is the test for inclusion, matching A6. An item with no summary
+ * has not been through the step that produces a description we are willing to
+ * stand behind, so it stays off every distribution surface rather than being
+ * republished as a raw scraped headline.
+ */
+export async function listPublishedEvidence(
+  options: PublishedEvidenceOptions = {},
+): Promise<EvidenceItem[]> {
+  const rows = await query<EvidenceRow>(
+    `SELECT e.evidence_id, e.kind, e.title, e.url, e.published_date,
+            e.ministry_id, e.scheme_id, e.summary
+     FROM evidence_item e
+     LEFT JOIN scheme s ON s.scheme_id = e.scheme_id
+     WHERE e.summary IS NOT NULL
+       AND ($1::DATE IS NULL OR e.published_date = $1::DATE)
+       AND ($2::TEXT IS NULL OR e.ministry_id = $2 OR s.ministry_id = $2)
+     ORDER BY e.published_date DESC NULLS LAST, e.evidence_id DESC
+     LIMIT $3`,
+    [options.day ?? null, options.ministryId ?? null, options.limit ?? 50],
+  );
+  return rows.map((row) => ({
+    evidenceId: Number(row.evidence_id),
+    kind: row.kind as EvidenceKind,
+    title: row.title,
+    url: row.url,
+    publishedDate: row.published_date,
+    ministryId: row.ministry_id,
+    schemeId: row.scheme_id,
+    summary: row.summary,
+  }));
+}
+
+/**
+ * Calendar days that have a digest edition with something in it, newest first.
+ *
+ * Derived rather than stored. There is no digest table because a digest is a
+ * view over content that is already published and already dated, and a table
+ * would introduce a second copy that could disagree with the first.
+ */
+export async function listDigestDays(limit = 30): Promise<string[]> {
+  const rows = await query<{ day: string }>(
+    `SELECT day FROM (
+       SELECT ${PUBLISHED_DAY_SQL} AS day
+         FROM anomaly_flag f
+        WHERE f.status = 'approved'
+       UNION
+       SELECT e.published_date AS day
+         FROM evidence_item e
+        WHERE e.summary IS NOT NULL AND e.published_date IS NOT NULL
+     ) days
+     WHERE day IS NOT NULL
+     ORDER BY day DESC
+     LIMIT $1`,
+    [limit],
+  );
+  // DATE comes back as a `YYYY-MM-DD` string: see the type parser in client.ts.
+  return rows.map((row) => row.day);
+}
+
 /** Amount helper re-exported so callers do not need a second import. */
 export { NOT_REPORTED, parseAmountCr };
 export type { Amount };

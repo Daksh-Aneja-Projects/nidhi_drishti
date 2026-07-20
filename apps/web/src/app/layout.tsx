@@ -22,6 +22,17 @@ export const metadata: Metadata = {
     description: strings.site.description,
   },
   robots: { index: true, follow: true },
+  // Feed autodiscovery, site-wide rather than per page: a reader who wants the
+  // feed is as likely to be on a ministry page as on the digest, and one
+  // declaration in the document head is what every feed reader looks for.
+  alternates: {
+    types: {
+      'application/atom+xml': [
+        { url: '/feed.xml', title: strings.feed.siteTitle },
+        { url: '/feed/flags.xml', title: strings.feed.flagsTitle },
+      ],
+    },
+  },
 };
 
 export const viewport: Viewport = {

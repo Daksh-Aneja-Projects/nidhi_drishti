@@ -37,7 +37,21 @@ export async function GET(): Promise<NextResponse> {
     {
       status: ok ? 'ok' : 'degraded',
       checkedAt: new Date().toISOString(),
+      // Freshness is reported at top level too, so an uptime monitor's
+      // response-body assertion does not have to reach into `sources`. It
+      // never affects `status`: see the note on checkSources below.
+      freshestSourceAgeHours: sources.freshestAgeHours,
+      // Object form, kept exactly as it already shipped: named lookup for the
+      // ops page and anything else reading a specific check by key.
       checks: { database, cache, sources },
+      // Array form, additive: a generic uptime/alerting tool (infra/monitoring)
+      // can iterate `checkList` without knowing the key names in advance, and
+      // assert `checkList.every(c => c.ok)` for anything that must be healthy.
+      checkList: [
+        { name: 'database', ...database },
+        { name: 'cache', ...cache },
+        { name: 'sources', ...sources },
+      ],
     },
     {
       status: ok ? 200 : 503,

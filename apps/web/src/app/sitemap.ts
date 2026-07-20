@@ -22,7 +22,18 @@ const STATIC_PATHS = [
   '/sources',
   '/corrections',
   '/api-docs',
+  '/digest',
 ];
+
+/**
+ * The feeds are listed too.
+ *
+ * A feed is a document at a stable address, not an asset, and listing it is how
+ * a crawler learns the site publishes one. Dated digest editions are
+ * deliberately not enumerated: there is one per day for the life of the
+ * project, and the feeds plus the "earlier editions" list already reach them.
+ */
+const FEED_PATHS = ['/feed.xml', '/feed/flags.xml'];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const lastModified = new Date();
@@ -32,6 +43,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: path === '/' ? 'daily' : 'weekly',
     priority: path === '/' ? 1 : 0.7,
   }));
+
+  for (const path of FEED_PATHS) {
+    entries.push({
+      url: `${siteUrl}${path}`,
+      lastModified,
+      changeFrequency: 'daily',
+      priority: 0.5,
+    });
+  }
 
   try {
     const { fy } = await resolveFy();

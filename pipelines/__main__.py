@@ -17,6 +17,7 @@ from typing import Any
 import structlog
 
 from pipelines.lib.config import get_settings
+from pipelines.lib.observability import init_observability, set_run_context
 from pipelines.sources import SOURCE_MODULES, load_runner
 
 
@@ -93,6 +94,9 @@ def _kwargs_for(name: str, args: argparse.Namespace) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     configure_logging(json_output=bool(args.json_logs))
+    # Armed once per process, before anything can fail. A no-op without
+    # SENTRY_DSN, so local runs and CI stay silent (docs/09 plane B).
+    init_observability("pipeline")
 
     if args.command == "list":
         settings = get_settings()
@@ -101,6 +105,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {name:<18} {module}")
         return 0
 
+    # Tags every event this run produces with the source id, so a crash in
+    # Sentry is attributable without cross-referencing the pipeline_run table.
+    set_run_context(source_id=args.name)
     runner = load_runner(args.name)
     kwargs = _kwargs_for(args.name, args)
 

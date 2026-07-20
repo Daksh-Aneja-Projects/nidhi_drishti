@@ -1,0 +1,46 @@
+# External uptime monitor config (docs/09 plane B: "external monitor
+# (BetterStack/UptimeRobot) on / and /api/health").
+#
+# This file is deliberately vendor-neutral: nothing in this repo reads it
+# directly. It documents the two monitors that must exist and their
+# settings, so setting them up in an actual provider's console or API is a
+# five-minute transcription job rather than a design decision made at 2am.
+# Field names follow BetterStack's monitor object closely enough to paste in
+# with minor renaming (https://betterstack.com/docs/uptime/api/monitors/);
+# UptimeRobot's `newMonitor` API (`url`, `type`, `interval`) is an equally
+# direct fit. Either vendor is fine -- docs/09 names both as acceptable.
+
+version: 1
+vendor_reference: betterstack # or uptimerobot; both fit this shape
+
+monitors:
+  - name: "Nidhi Drishti — homepage"
+    url: "${SITE_URL}/"
+    method: GET
+    check_frequency_seconds: 180
+    request_timeout_seconds: 15
+    expected_status_codes: [200]
+    # More than one region: a false alarm from one region's transient
+    # network blip pages a solo builder at 2am for nothing. Two agreeing
+    # failures across regions is a real outage.
+    regions: [us, eu, apac]
+    alert_after_consecutive_failures: 2
+    maps_to_alert_rule: null # a homepage outage is self-evidently urgent; no separate rule needed
+
+  - name: "Nidhi Drishti — /api/health"
+    url: "${SITE_URL}/api/health"
+    method: GET
+    check_frequency_seconds: 60
+    request_timeout_seconds: 15
+    # 503 is a real, documented response from this endpoint (apps/web/src/app
+    # /api/health/route.ts: database unreachable, or the shared cache is
+    # configured but unreachable). It is not a monitor misconfiguration, and
+    # it must page -- hence only 200 is "healthy" here even though the route
+    # itself never 500s.
+    expected_status_codes: [200]
+    regions: [us, eu, apac]
+    alert_after_consecutive_failures: 2
+    # A 503 from /api/health is effectively the same signal as "database
+    # down" in docs/11-runbook.md; treat a page from this monitor as that
+    # runbook entry, not as its own investigation.
+    maps_to_runbook_section: "The database is down"

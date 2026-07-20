@@ -28,6 +28,7 @@ from pydantic import BaseModel, ValidationError
 from agents.lib.config import AgentSettings, get_agent_settings
 from agents.lib.db import GuardedConnection, record_agent_call
 from agents.lib.prompts import Prompt
+from pipelines.lib.observability import capture_exception, init_observability, set_run_context
 
 log = structlog.get_logger(__name__)
 
@@ -248,6 +249,10 @@ class AgentClient:
         self.settings = settings or get_agent_settings()
         self._transport = transport
         self.call_logger: CallLogger = call_logger or StructlogCallLogger()
+        # Armed once per process, before any model call can fail. A no-op
+        # without SENTRY_DSN, so the test suite and a local eval run stay
+        # silent and network-free (docs/09 plane B).
+        init_observability("agent", settings=self.settings.base)
 
     @property
     def transport(self) -> MessageTransport:
@@ -311,6 +316,12 @@ class AgentClient:
         except Exception as exc:
             error_text = f"{type(exc).__name__}: {exc}"
             validation_passed = False
+            # Captured explicitly: this except block means the exception may
+            # never reach an uncaught-exception hook (a caller can retry or
+            # fall back, as A4's self-check does), so Sentry's own excepthook
+            # integration cannot be relied on to see it.
+            set_run_context(agent_id=agent_id, entity_id=entity_id)
+            capture_exception(exc)
             raise
         finally:
             self.call_logger.record(

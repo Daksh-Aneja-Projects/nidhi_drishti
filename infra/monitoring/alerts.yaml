@@ -1,0 +1,179 @@
+# Alert rule definitions for docs/09 plane B, one entry per alert named
+# there: "pipeline failure, drift alert, source stale > 2x cadence, API p95 >
+# 500ms, error-rate spike, agent self-check failure rate > 10%".
+#
+# Portable YAML, not a vendor config file: nothing in this repo reads it
+# directly. Translate each rule into whatever routes to
+# ALERT_WEBHOOK_URL / TELEGRAM_BOT_TOKEN+TELEGRAM_CHAT_ID, which is also
+# where pipelines/lib/alerting.py already sends the first two rules from
+# application code.
+#
+# Two delivery paths, and this file assumes both:
+#   1. `pipeline_failure`, `drift_alert` and (indirectly) `agent_self_check_
+#      failure_rate` are pushed FROM application code the moment they
+#      happen: pipelines/lib/alerting.py (docs/05 A5) already calls the
+#      Telegram/webhook channels on every failed or drifted run. Nothing new
+#      to build for those two; this file documents what already fires and at
+#      what threshold, so an operator wiring a dashboard knows what to expect.
+#   2. `source_stale`, `api_latency`, `error_rate_spike` and
+#      `agent_self_check_failure_rate` are PULLED by an external monitor,
+#      APM product, or a scheduled query, because nothing inside a single
+#      Node or Python process is positioned to notice a cross-instance
+#      aggregate (latency, error rate) or a passage of time with no event
+#      (staleness). Modelled on BetterStack's alerting policies
+#      (https://betterstack.com/docs/uptime/monitoring/alerting-policies/);
+#      the `prometheus_equivalent` field on each rule is the same threshold
+#      expressed for Grafana Alerting / Alertmanager, for a deployment that
+#      already runs Prometheus instead.
+
+version: 1
+
+rules:
+  - id: pipeline_failure
+    docs_ref: "docs/09 section B"
+    delivery: push
+    pushed_from: "pipelines/lib/alerting.py alert_pipeline_failure(), called by pipelines/lib/runs.py PipelineRun.__exit__ on any uncaught exception"
+    description: >
+      A pipeline run finished with status 'failed': an uncaught exception,
+      not a deliberate drift abort (which is its own, lower-urgency rule
+      below).
+    threshold: "any single occurrence"
+    threshold_rationale: >
+      No grace period and no batching. docs/07's standing risks call out
+      budget-PDF parsing as chronically fragile, and a source that stops
+      updating without anyone noticing is the exact failure CLAUDE.md
+      principle 4 ("graceful staleness") exists to prevent. One failure is
+      worth a look; batching these would just delay that look.
+    severity: high
+    dashboard_query: |
+      SELECT run_id, source_id, started_at, metrics->>'error' AS error
+      FROM pipeline_run
+      WHERE status = 'failed'
+      ORDER BY started_at DESC;
+
+  - id: drift_alert
+    docs_ref: "docs/09 section B, docs/05 A5"
+    delivery: push
+    pushed_from: "pipelines/lib/alerting.py alert_drift(), called by pipelines/lib/runs.py PipelineRun.__exit__ for any warn/high drift finding"
+    description: >
+      A run's metrics deviated from its own recent history: row count
+      outside +/-50% of baseline, total amount swinging wildly, a changed
+      column set, or a rising parse-error rate (pipelines/lib/drift.py).
+    threshold: "any drift finding of severity 'warn' or 'high' on a run"
+    threshold_rationale: >
+      Severity already reflects how bad the specific finding is
+      (pipelines/lib/drift.py sanity_check); this rule does not add a second
+      filter on top, it just says every actionable finding gets a human's
+      attention. A5 may additionally auto-pause the source's canonical
+      writes on a 'high' finding -- this alert is what tells a human that
+      happened, not something they have to notice by reading pipeline_run.
+    severity: "warn, escalating to high if any finding in the run is 'high'"
+    dashboard_query: |
+      SELECT run_id, source_id, started_at, metrics->'drift' AS findings
+      FROM pipeline_run
+      WHERE status = 'drift_alert'
+      ORDER BY started_at DESC;
+
+  - id: source_stale
+    docs_ref: "docs/09 section B"
+    delivery: pull
+    poll_interval_minutes: 60
+    evaluated_against: "v_source_freshness (db/src/queries.ts getSourceFreshness / apps/web /ops page)"
+    description: "A source has not produced a successful fetch in longer than 2x its declared cadence."
+    threshold: "hours_since_fetch > 2 * cadence_hours"
+    threshold_rationale: >
+      2x rather than 1x. Government portals lag routinely and CLAUDE.md
+      principle 4 treats that as a product signal ("Not reported"), not an
+      incident -- /api/health deliberately never turns red for staleness
+      alone (see apps/web/src/app/api/health/route.ts). 2x is the line
+      between "the ministry published late" and "our scraper silently broke",
+      which is the actual thing worth paging on.
+    severity: warn
+    dashboard_query: |
+      SELECT source_id, name, cadence, hours_since_fetch
+      FROM v_source_freshness
+      WHERE is_stale;
+
+  - id: api_latency
+    docs_ref: "docs/09 section B, docs/02 section 6"
+    delivery: pull
+    evaluated_against: "external APM / synthetic monitoring against /api/v1/*"
+    description: "Public API p95 latency has crossed the point where it stops being a performance nit and starts being an incident."
+    threshold: "p(95) of request duration > 500ms, evaluated over a 5 minute rolling window"
+    threshold_rationale: >
+      Not the docs/02 300ms target: 300ms is the budget for a warm cache,
+      and infra/load-test/read-paths.js already asserts it directly against
+      a build before release. 500ms in production is a level that is
+      unambiguously wrong (Redis down and every request falling through to
+      Postgres, a missing index, a stampede after a deploy) rather than a
+      cold-cache blip that would page on every quiet night.
+    severity: high
+    prometheus_equivalent: |
+      histogram_quantile(0.95,
+        sum(rate(http_request_duration_seconds_bucket{route=~"/api/v1/.*"}[5m])) by (le)
+      ) > 0.5
+
+  - id: error_rate_spike
+    docs_ref: "docs/09 section B"
+    delivery: pull
+    evaluated_against: "external APM (Sentry issue alert threshold or equivalent) or reverse-proxy access log"
+    description: "Elevated rate of 5xx responses or unhandled exceptions across the web app."
+    threshold: "5xx rate > 5% of requests over a 5 minute window, with a floor of 20 requests in that window"
+    threshold_rationale: >
+      The request floor exists because this is a low-traffic public
+      transparency site (docs/07 Phase 5 exit criterion is "10
+      journalists/researchers", not a consumer audience): without a floor, 1
+      error out of 3 requests at 2am reads as a 33% error rate and pages for
+      nothing.
+    severity: high
+    prometheus_equivalent: |
+      (
+        sum(rate(http_requests_total{status=~"5.."}[5m]))
+        /
+        sum(rate(http_requests_total[5m]))
+      ) > 0.05
+      and
+      sum(rate(http_requests_total[5m])) * 300 > 20
+
+  - id: agent_self_check_failure_rate
+    docs_ref: "docs/09 section B, docs/05 A4 step 5"
+    delivery: pull
+    poll_interval_minutes: 60
+    evaluated_against: "agent_call (docs/09: 'every agent call logs ... validation pass/fail to an agent_call table')"
+    description: >
+      Share of A4 verification self-check passes that failed (docs/05 A4
+      step 5: "a second model call verifies every number in the narrative
+      exists in the provided facts"), before the one-time regeneration and,
+      failing that, the deterministic template fallback.
+    threshold: "failure_rate > 10%, over the trailing 100 self-check attempts or the trailing 24h, whichever window has more attempts"
+    threshold_rationale: >
+      docs/09 states this exact number. A rate above 10% means the fallback
+      template is standing in for the narrative unusually often, which is
+      the leading indicator that a prompt or a model change quietly broke
+      citation grounding -- the one thing A4's whole design (docs/05, docs/08
+      section 2) exists to guarantee.
+    severity: warn
+    query_note: >
+      agent_call has one row per model call, not one row per self-check;
+      isolate the self-check calls by their prompt_version (a content hash,
+      not a name -- see agents/lib/prompts.py). Resolve it first with:
+        uv run python -c "from agents.lib.prompts import load_prompt; print(load_prompt('a4_self_check').version)"
+    dashboard_query: |
+      -- Replace :self_check_prompt_version with the value from query_note above.
+      SELECT
+        count(*) FILTER (WHERE validation_passed = false)::float
+          / NULLIF(count(*), 0) AS self_check_failure_rate,
+        count(*) AS attempts
+      FROM agent_call
+      WHERE agent_id = 'A4'
+        AND prompt_version = :self_check_prompt_version
+        AND created_at > now() - interval '24 hours';
+
+delivery_channels:
+  telegram:
+    configured_via: "TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (.env.example)"
+    implemented_in: "pipelines/lib/alerting.py _post_telegram"
+  webhook:
+    configured_via: "ALERT_WEBHOOK_URL (.env.example)"
+    implemented_in: "pipelines/lib/alerting.py _post_webhook"
+    payload_shape: "{ title, body, severity, context, service: 'nidhi-pipelines' } — a Slack-compatible incoming webhook accepts this as-is if `body` is mapped to `text`."

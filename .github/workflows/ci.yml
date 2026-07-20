@@ -62,6 +62,54 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+      # Boots the app that was just built (no --dev, no mocks) and hits
+      # /api/health for real, against the real Postgres service above. This
+      # is what actually proves the health endpoint's shape and status code
+      # survive a production build, rather than only unit-testing the route's
+      # pure logic (docs/09 section B; apps/web/src/app/api/health/route.ts).
+      - name: Health endpoint against a built app
+        run: |
+          set -e
+          # PORT rather than `next start --port`: pnpm's `--` argument
+          # forwarding is inconsistent across shells for this invocation, and
+          # `next start` reads PORT directly.
+          PORT=3100 pnpm --filter @nidhi/web start &
+          SERVER_PID=$!
+
+          # Poll rather than a fixed sleep: `next start` boot time varies with
+          # runner load, and a flaky fixed delay is worse than a bounded poll.
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:3100/api/health -o /tmp/health.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ ! -s /tmp/health.json ]; then
+            echo "::error::/api/health never responded within 30s"
+            kill "$SERVER_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          cat /tmp/health.json
+          STATUS=$(jq -r '.status' /tmp/health.json)
+          HAS_CHECKLIST=$(jq -r 'has("checkList")' /tmp/health.json)
+
+          kill "$SERVER_PID" 2>/dev/null || true
+
+          # 'ok' is expected here: migrations and seed ran above against the
+          # same DATABASE_URL, and no REDIS_URL is set in this job, which the
+          # route treats as "cache not configured" rather than "degraded"
+          # (apps/web/src/lib/rate-limit.ts isCacheConfigured()).
+          if [ "$STATUS" != "ok" ]; then
+            echo "::error::expected /api/health status 'ok', got '$STATUS'"
+            exit 1
+          fi
+          if [ "$HAS_CHECKLIST" != "true" ]; then
+            echo "::error::/api/health response is missing the checkList array"
+            exit 1
+          fi
+
   python:
     name: Python
     runs-on: ubuntu-latest

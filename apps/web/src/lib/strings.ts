@@ -578,6 +578,59 @@ export const strings = {
     unavailable: 'The operations view could not read the database.',
   },
 
+  digest: {
+    title: 'Daily digest',
+    eyebrow: 'What was published today',
+    lede:
+      'Signals that cleared review, and the activity summarised alongside them, gathered by the day they were published. Nothing here is new: every line was already published on this site, and the digest only arranges it.',
+    todayTitle: 'Today',
+    signalsTitle: 'Signals published',
+    signalsHelp:
+      'Each signal cleared human review before it appeared. Each one states plainly what it does not establish.',
+    evidenceTitle: 'Activity summarised',
+    evidenceHelp:
+      'Press releases, parliament answers and reporting matched to an entity. Context around the figures, never a source of the figures.',
+    quietTitle: 'A quiet day',
+    quietBody:
+      'No signal cleared review and no activity was summarised on this date. That is an ordinary outcome, not a gap in the record.',
+    recentTitle: 'Earlier editions',
+    recentHelp: 'Days on which something was published. Each one keeps its own address.',
+    recentEmpty: 'No edition has anything in it yet.',
+    signalsCounted: 'signals',
+    evidenceCounted: 'summarised items',
+    unavailable: 'The digest could not be assembled.',
+    unavailableBody:
+      'The published record is not reachable at the moment. Nothing is estimated in its place. Try again shortly.',
+    notFoundTitle: 'That is not a date we can show',
+    notFoundBody:
+      'A digest address is a calendar day written as four digits, two digits, two digits. Start from the latest edition.',
+    latest: 'Latest edition',
+    subscribeTitle: 'Follow this without an account',
+    subscribeBody:
+      'The digest is published as a feed you can read in any feed reader. There is no sign up, no email list and no account, because collecting an address would mean collecting personal data this project has no need for.',
+    subscribeLink: 'Open the feed',
+    subscribeFlagsLink: 'Open the signals feed',
+    dateLabel: 'Edition',
+  },
+
+  feed: {
+    siteTitle: 'Nidhi Drishti, signals and activity',
+    siteSubtitle:
+      'Signals that cleared review, and the activity summarised alongside them, as they are published.',
+    flagsTitle: 'Nidhi Drishti, signals',
+    flagsSubtitle:
+      'Patterns worth a second look, produced by published rules over official figures and cleared by a reviewer before publication. Each entry states plainly what it does not establish.',
+    ministrySuffix: 'signals and activity',
+    ministrySubtitle:
+      'Signals and summarised activity for one ministry and the schemes under it, published only after review.',
+    doesNotEstablish: 'What this does not establish',
+    evidenceCaveat:
+      'This is observable activity around an entity, matched by name. It is context for the figures and never a source of the figures.',
+    authorName: 'Nidhi Drishti',
+    nationalEntity: 'Union budget',
+    ministryUnknownTitle: 'Nidhi Drishti, signals and activity',
+  },
+
   admin: {
     reviewTitle: 'Signal review',
     reviewEyebrow: 'Internal',

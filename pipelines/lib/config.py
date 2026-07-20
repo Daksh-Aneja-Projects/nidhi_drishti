@@ -18,10 +18,12 @@ from dotenv import load_dotenv
 # Repo root is three levels up from this file: pipelines/lib/config.py.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: Source ids declared in db/seed/02_source_registry.sql. A pipeline may only
-#: write for an id in this set; source_record.source_id is a foreign key to the
-#: registry, so anything else fails at the database anyway, but failing here
-#: gives a readable error before a single request is made.
+#: Source ids declared across db/seed/02_source_registry.sql and
+#: db/seed/06_scheme_portal_sources.sql. A pipeline may only write for an id in
+#: this set; source_record.source_id is a foreign key to the registry, so
+#: anything else fails at the database anyway, but failing here gives a readable
+#: error before a single request is made. This set is the Python-side mirror of
+#: the seed files and must be kept in step with them.
 KNOWN_SOURCE_IDS: frozenset[str] = frozenset(
     {
         "union_budget",
@@ -36,6 +38,15 @@ KNOWN_SOURCE_IDS: frozenset[str] = frozenset(
         "sansad_qa",
         "news",
         "demo",
+        # Scheme-specific portals (docs/03 section 2.6, roadmap v1.1). Seeded in
+        # db/seed/06_scheme_portal_sources.sql.
+        "mgnrega",
+        "pmkisan",
+        "jjm",
+        # v2 state-budget sources (docs/12). Seeded in db/seed/07_states.sql with
+        # jurisdiction = 'state', which the CSS double-count guard keys off.
+        "state_karnataka",
+        "state_odisha",
     }
 )
 

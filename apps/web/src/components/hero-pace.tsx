@@ -2,7 +2,7 @@ import type { Amount, BurnMetrics, Provenance } from '@nidhi/core';
 import { Figure } from '@/components/figure';
 import { PaceTrack } from '@/components/pace-track';
 import { formatIstDate } from '@/lib/format';
-import { strings } from '@/lib/strings';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 
 /**
  * The headline record: three figures and the hero pace track, in one ruled band.
@@ -29,7 +29,7 @@ interface HeroPaceProps {
   label?: string;
 }
 
-export function HeroPace({
+export async function HeroPace({
   entityId,
   authority,
   spent,
@@ -41,6 +41,7 @@ export function HeroPace({
   unit = 'auto',
   label,
 }: HeroPaceProps) {
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
   return (
     <section className="border-y-2 border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper-raised)]">
       <div className="grid gap-x-10 gap-y-8 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
@@ -98,7 +99,7 @@ export function HeroPace({
               {strings.overview.asOfLabel}
             </span>
             <span className="figure text-lg font-medium">
-              {asOf ? formatIstDate(asOf) : strings.common.notStated}
+              {asOf ? formatIstDate(asOf, locale) : strings.common.notStated}
             </span>
           </div>
 

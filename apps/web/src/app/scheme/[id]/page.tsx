@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Layers } from 'lucide-react';
 import {
-  formatFiscalYearLong,
   formatPercent,
   isNotReported,
   isReported,
@@ -25,9 +23,11 @@ import {
   PageShell,
   Section,
 } from '@/components/layout-primitives';
+import { Link } from '@/components/locale-link';
 import { TenderList } from '@/components/tender-list';
+import { formatFiscalYearLong } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * P3, the scheme page.
@@ -67,7 +67,12 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const [{ id }, query, strings, locale] = await Promise.all([
+    params,
+    searchParams,
+    getStrings(),
+    getLocale(),
+  ]);
   try {
     const { fy } = await resolveFy(first(query.fy));
     const scheme = await getSchemeSummary(fy, id);
@@ -76,7 +81,7 @@ export async function generateMetadata({
     }
     return {
       title: scheme.name,
-      description: `${strings.scheme.stagesHelp} ${scheme.name}, ${formatFiscalYearLong(fy)}.`,
+      description: `${strings.scheme.stagesHelp} ${scheme.name}, ${formatFiscalYearLong(fy, locale)}.`,
     };
   } catch {
     return { title: strings.common.scheme };
@@ -97,7 +102,12 @@ export default async function SchemePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const [{ id }, query, strings, locale] = await Promise.all([
+    params,
+    searchParams,
+    getStrings(),
+    getLocale(),
+  ]);
 
   let data: PageData | null = null;
   let missing = false;
@@ -148,7 +158,7 @@ export default async function SchemePage({
   return (
     <PageShell>
       <PageHeader
-        eyebrow={formatFiscalYearLong(fy)}
+        eyebrow={formatFiscalYearLong(fy, locale)}
         title={scheme.name}
         lede={
           scheme.ministryName

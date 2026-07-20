@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { AlertTriangle, Download, Landmark } from 'lucide-react';
-import { formatFiscalYearLong, type MinistrySummary } from '@nidhi/core';
+import { type MinistrySummary } from '@nidhi/core';
 import { listMinistrySummaries } from '@nidhi/db';
 import { Icon } from '@/components/icon';
 import { EmptyState, PageHeader, PageShell } from '@/components/layout-primitives';
 import { MinistryTable, resolveMinistrySort } from '@/components/ministry-table';
 import { PaceLegend } from '@/components/pace-track';
+import { formatFiscalYearLong } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * The ministry index.
@@ -26,7 +27,7 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
-  const params = await searchParams;
+  const [params, strings] = await Promise.all([searchParams, getStrings()]);
   const requested = Array.isArray(params.fy) ? params.fy[0] : params.fy;
   const suffix = requested ? ` ${requested}` : '';
   return {
@@ -40,7 +41,7 @@ export default async function MinistriesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
+  const [params, strings, locale] = await Promise.all([searchParams, getStrings(), getLocale()]);
   const { sort, dir } = resolveMinistrySort(params.sort, params.dir);
 
   let fy: string;
@@ -60,7 +61,7 @@ export default async function MinistriesPage({
   return (
     <PageShell>
       <PageHeader
-        eyebrow={formatFiscalYearLong(fy)}
+        eyebrow={formatFiscalYearLong(fy, locale)}
         title={strings.ministries.title}
         lede={strings.ministries.lede}
         actions={

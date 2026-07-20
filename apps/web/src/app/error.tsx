@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { EmptyState, PageShell } from '@/components/layout-primitives';
-import { strings } from '@/lib/strings';
+import { useStrings } from '@/components/locale-provider';
 
 /**
  * The route error boundary. Next requires this to be a client component.
@@ -20,6 +20,7 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const strings = useStrings();
   useEffect(() => {
     console.error('[web] route error', error);
   }, [error]);

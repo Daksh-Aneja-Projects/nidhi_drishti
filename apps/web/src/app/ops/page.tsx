@@ -18,8 +18,9 @@ import {
 } from '@/components/layout-primitives';
 import { formatAge, formatIstDateTime } from '@/lib/format';
 import { hasInternalAccess } from '@/lib/api';
+import { getLocale, getStrings } from '@/lib/i18n-server';
+import type { Strings } from '@/lib/strings';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * The internal operations view (docs/09 plane B): runs by status, source
@@ -32,10 +33,13 @@ import { strings } from '@/lib/strings';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: strings.ops.title,
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.ops.title,
+    robots: { index: false, follow: false },
+  };
+}
 
 const RUN_LIMIT = 100;
 
@@ -44,7 +48,7 @@ function readMetric(run: PipelineRun, key: string): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function durationSeconds(run: PipelineRun): string {
+function durationSeconds(run: PipelineRun, strings: Strings): string {
   if (!run.finishedAt) return strings.common.loading;
   const seconds = (Date.parse(run.finishedAt) - Date.parse(run.startedAt)) / 1000;
   return Number.isFinite(seconds) ? `${Math.max(0, Math.round(seconds))}s` : strings.common.notReported;
@@ -59,6 +63,7 @@ function severityTone(severity: InvariantFinding['severity']): 'neutral' | 'seal
 }
 
 export default async function OpsPage() {
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
   if (!(await hasInternalAccess())) {
     return (
       <PageShell>
@@ -155,7 +160,7 @@ export default async function OpsPage() {
                       {source.cadence}
                     </td>
                     <td className="text-[13px] text-[color:var(--color-ink-soft)]">
-                      {formatAge(source.hoursSinceFetch)}
+                      {formatAge(source.hoursSinceFetch, locale)}
                     </td>
                     <td>
                       {source.isStale ? (
@@ -258,9 +263,9 @@ export default async function OpsPage() {
                       <Chip tone={statusTone(run.status)}>{run.status}</Chip>
                     </td>
                     <td className="text-[13px] text-[color:var(--color-ink-soft)]">
-                      {formatIstDateTime(run.startedAt)}
+                      {formatIstDateTime(run.startedAt, locale)}
                     </td>
-                    <td className="num text-[13px]">{durationSeconds(run)}</td>
+                    <td className="num text-[13px]">{durationSeconds(run, strings)}</td>
                     <td className="num text-[13px]">{readMetric(run, 'row_count') ?? ''}</td>
                     <td className="num text-[13px]">{readMetric(run, 'parse_error_count') ?? ''}</td>
                   </tr>

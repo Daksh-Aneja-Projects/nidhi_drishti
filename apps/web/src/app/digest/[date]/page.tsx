@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation';
 import { DigestEditionView } from '../edition';
 import { isDigestDay, istToday, loadDigest, loadDigestDays } from '@/lib/digest';
 import { formatIstDate } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { siteUrl } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * One day's edition, at a permanent address.
@@ -22,12 +22,12 @@ export const revalidate = 600;
 type Params = Promise<{ date: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
-  const { date } = await params;
+  const [{ date }, strings, locale] = await Promise.all([params, getStrings(), getLocale()]);
   if (!isDigestDay(date)) {
     return { title: strings.digest.notFoundTitle };
   }
   return {
-    title: `${strings.digest.title}, ${formatIstDate(date)}`,
+    title: `${strings.digest.title}, ${formatIstDate(date, locale)}`,
     description: strings.digest.lede,
     alternates: {
       canonical: `${siteUrl}/digest/${date}`,

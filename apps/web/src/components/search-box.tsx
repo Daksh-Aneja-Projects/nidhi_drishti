@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { Icon } from '@/components/icon';
+import { Link } from '@/components/locale-link';
+import { useStrings } from '@/components/locale-provider';
 import { track } from '@/lib/analytics';
-import { strings } from '@/lib/strings';
 
 interface Hit {
   entityType: 'ministry' | 'scheme';
@@ -22,6 +22,7 @@ interface Hit {
  * count rather than on the term.
  */
 export function SearchBox() {
+  const strings = useStrings();
   const [term, setTerm] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
   const [open, setOpen] = useState(false);

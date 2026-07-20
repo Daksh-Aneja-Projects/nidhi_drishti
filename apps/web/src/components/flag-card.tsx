@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import {
   ANOMALY_RULES,
@@ -12,10 +11,11 @@ import {
   type Severity,
 } from '@nidhi/core';
 import { Icon } from '@/components/icon';
+import { Link } from '@/components/locale-link';
+import { useLocale, useStrings } from '@/components/locale-provider';
 import { Callout, Chip } from '@/components/layout-primitives';
 import { track } from '@/lib/analytics';
 import { formatIstDate } from '@/lib/format';
-import { strings } from '@/lib/strings';
 
 /**
  * A signal card.
@@ -30,12 +30,6 @@ import { strings } from '@/lib/strings';
  * not the page's job: the card reads it out of ANOMALY_RULES itself, which
  * means the only way to publish a card without it is to delete this component.
  */
-
-const SEVERITY_LABELS: Record<Severity, string> = {
-  high: strings.flags.severityHigh,
-  notable: strings.flags.severityNotable,
-  info: strings.flags.severityInfo,
-};
 
 const SEVERITY_TONES: Record<Severity, 'neutral' | 'seal' | 'muted'> = {
   high: 'seal',
@@ -97,11 +91,18 @@ function readMetric(metric: Record<string, unknown>): MetricEntry[] {
 }
 
 export function FlagCard({ flag }: { flag: AnomalyFlag }) {
+  const strings = useStrings();
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const rule = ANOMALY_RULES[flag.ruleId];
   const metrics = readMetric(flag.metric);
   const headline = metrics.slice(0, 3);
   const rest = metrics.slice(3);
+  const severityLabels: Record<Severity, string> = {
+    high: strings.flags.severityHigh,
+    notable: strings.flags.severityNotable,
+    info: strings.flags.severityInfo,
+  };
 
   function toggle() {
     const next = !open;
@@ -120,7 +121,7 @@ export function FlagCard({ flag }: { flag: AnomalyFlag }) {
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div className="min-w-0">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
-            <Chip tone={SEVERITY_TONES[flag.severity]}>{SEVERITY_LABELS[flag.severity]}</Chip>
+            <Chip tone={SEVERITY_TONES[flag.severity]}>{severityLabels[flag.severity]}</Chip>
             <span className="eyebrow">{formatFiscalYearShort(flag.fy)}</span>
             {flag.status === 'pending' ? <Chip tone="muted">{strings.flags.reviewPending}</Chip> : null}
           </div>
@@ -134,7 +135,7 @@ export function FlagCard({ flag }: { flag: AnomalyFlag }) {
             </Link>
             <span className="mx-2 text-[color:var(--color-rule-strong)]">/</span>
             <span className="text-[color:var(--color-ink-faint)]">
-              {formatIstDate(flag.createdAt)}
+              {formatIstDate(flag.createdAt, locale)}
             </span>
           </p>
         </div>
@@ -188,7 +189,9 @@ export function FlagCard({ flag }: { flag: AnomalyFlag }) {
                 <span className="text-[color:var(--color-ink-faint)]">
                   {EVIDENCE_KIND_LABELS[item.kind]}
                   <span className="mx-1.5">/</span>
-                  {item.publishedDate ? formatIstDate(item.publishedDate) : strings.evidence.undated}
+                  {item.publishedDate
+                    ? formatIstDate(item.publishedDate, locale)
+                    : strings.evidence.undated}
                 </span>{' '}
                 {item.url ? (
                   <a

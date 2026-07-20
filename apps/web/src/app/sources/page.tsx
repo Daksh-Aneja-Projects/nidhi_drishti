@@ -12,7 +12,7 @@ import {
   TableScroll,
 } from '@/components/layout-primitives';
 import { formatAge, formatIstDate } from '@/lib/format';
-import { strings } from '@/lib/strings';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 
 /**
  * The attribution page docs/08 section 1 requires.
@@ -24,10 +24,13 @@ import { strings } from '@/lib/strings';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: strings.sourcesPage.title,
-  description: strings.sourcesPage.lede,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.sourcesPage.title,
+    description: strings.sourcesPage.lede,
+  };
+}
 
 async function load(): Promise<{
   registry: SourceRegistryEntry[];
@@ -43,7 +46,11 @@ async function load(): Promise<{
 }
 
 export default async function SourcesPage() {
-  const { registry, freshness } = await load();
+  const [{ registry, freshness }, strings, locale] = await Promise.all([
+    load(),
+    getStrings(),
+    getLocale(),
+  ]);
 
   return (
     <PageShell>
@@ -110,10 +117,11 @@ export default async function SourcesPage() {
                       <td className="text-[13px] text-[color:var(--color-ink-soft)]">
                         {state ? (
                           <>
-                            <span>{formatAge(state.hoursSinceFetch)}</span>
+                            <span>{formatAge(state.hoursSinceFetch, locale)}</span>
                             {state.latestDocumentDate ? (
                               <span className="block text-[12px] text-[color:var(--color-ink-faint)]">
-                                {strings.freshness.asOf} {formatIstDate(state.latestDocumentDate)}
+                                {strings.freshness.asOf}{' '}
+                                {formatIstDate(state.latestDocumentDate, locale)}
                               </span>
                             ) : null}
                             {state.isStale ? (

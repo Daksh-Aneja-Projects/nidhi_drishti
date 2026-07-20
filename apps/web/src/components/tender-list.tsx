@@ -3,8 +3,8 @@ import type { Confidence, Tender, TenderStatus } from '@nidhi/core';
 import { Figure } from '@/components/figure';
 import { Icon } from '@/components/icon';
 import { Callout, Chip, EmptyState, TableScroll } from '@/components/layout-primitives';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { formatIstDate } from '@/lib/format';
-import { strings } from '@/lib/strings';
 
 /**
  * Linked tender notices.
@@ -17,25 +17,25 @@ import { strings } from '@/lib/strings';
  * imperfect match rather than presented as a fact.
  */
 
-const STATUS_LABELS: Record<TenderStatus, string> = {
-  published: strings.tenders.statusPublished,
-  awarded: strings.tenders.statusAwarded,
-  cancelled: strings.tenders.statusCancelled,
-};
-
-const CONFIDENCE_LABELS: Record<Confidence, string> = {
-  high: strings.verification.confidenceHigh,
-  medium: strings.verification.confidenceMedium,
-  low: strings.verification.confidenceLow,
-};
-
-export function TenderList({
+export async function TenderList({
   tenders,
   emptyBody,
 }: {
   tenders: readonly Tender[];
   emptyBody?: string;
 }) {
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
+  const statusLabels: Record<TenderStatus, string> = {
+    published: strings.tenders.statusPublished,
+    awarded: strings.tenders.statusAwarded,
+    cancelled: strings.tenders.statusCancelled,
+  };
+  const confidenceLabels: Record<Confidence, string> = {
+    high: strings.verification.confidenceHigh,
+    medium: strings.verification.confidenceMedium,
+    low: strings.verification.confidenceLow,
+  };
+
   if (tenders.length === 0) {
     return (
       <EmptyState
@@ -69,7 +69,9 @@ export function TenderList({
             {tenders.map((tender) => (
               <tr key={tender.tenderId}>
                 <td className="whitespace-nowrap text-[13px] text-[color:var(--color-ink-faint)]">
-                  {tender.publishedDate ? formatIstDate(tender.publishedDate) : strings.evidence.undated}
+                  {tender.publishedDate
+                    ? formatIstDate(tender.publishedDate, locale)
+                    : strings.evidence.undated}
                 </td>
                 <td className="min-w-[18rem] max-w-[32rem]">
                   {tender.url ? (
@@ -92,7 +94,7 @@ export function TenderList({
                   {tender.matchConfidence ? (
                     <span className="mt-1 block">
                       <Chip tone="muted">
-                        {strings.tenders.match}: {CONFIDENCE_LABELS[tender.matchConfidence]}
+                        {strings.tenders.match}: {confidenceLabels[tender.matchConfidence]}
                       </Chip>
                     </span>
                   ) : null}
@@ -106,7 +108,7 @@ export function TenderList({
                 </td>
                 <td className="text-[13px]">
                   <Chip tone={tender.status === 'cancelled' ? 'muted' : 'neutral'}>
-                    {STATUS_LABELS[tender.status]}
+                    {statusLabels[tender.status]}
                   </Chip>
                 </td>
               </tr>

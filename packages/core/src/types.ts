@@ -76,7 +76,13 @@ export type ExpenditureHead = 'revenue' | 'capital' | 'total';
  * Entities
  * ------------------------------------------------------------------ */
 
-export type EntityType = 'ministry' | 'scheme' | 'national';
+/**
+ * Fiscal entity kinds. `state` and `state_department` were added for the v2
+ * state-budgets line (docs/12). They share the fiscal_fact table and every
+ * reconciliation rule with the Union entities; the summaries stay separate
+ * because each materialised view filters by entity_type.
+ */
+export type EntityType = 'ministry' | 'scheme' | 'national' | 'state' | 'state_department';
 
 /**
  * The single entity id used for national aggregates.
@@ -517,3 +523,94 @@ export const DEMO_DATA_NOTICE =
 
 export const AI_NARRATIVE_NOTICE =
   'AI assembled from cited public sources. This is not an official reconciliation.';
+
+/* ------------------------------------------------------------------ *
+ * State budgets (v2, docs/12)
+ * ------------------------------------------------------------------ */
+
+/** A state has its own budget by right; a union territory may or may not. */
+export type StateKind = 'state' | 'ut';
+
+export const STATE_KIND_LABELS: Record<StateKind, string> = {
+  state: 'State',
+  ut: 'Union territory',
+};
+
+export interface StateEntity {
+  stateId: string;
+  name: string;
+  kind: StateKind;
+  /** Editorial grouping for the dashboard, no official status. */
+  region: string | null;
+  /**
+   * False for the union territories with no legislative assembly, whose
+   * expenditure runs through the Union budget rather than a state budget of
+   * their own. The UI uses this to avoid implying a treasury portal that does
+   * not exist.
+   */
+  hasLegislature: boolean;
+  active: boolean;
+}
+
+export interface StateDepartment {
+  stateDepartmentId: string;
+  stateId: string;
+  name: string;
+  sector: string | null;
+  active: boolean;
+}
+
+/**
+ * A state budget summary, the state analogue of {@link MinistrySummary}.
+ *
+ * The figures are the state's own totals as it publishes them, which blend the
+ * state's own revenue with central transfers it receives. That is correct as a
+ * state figure and is why it is never added to the Union total: the central
+ * transfers are already counted on the Union side (docs/12, the CSS rule).
+ */
+export interface StateSummary {
+  fy: FiscalYear;
+  stateId: string;
+  name: string;
+  kind: StateKind;
+  region: string | null;
+  be: Amount;
+  re: Amount;
+  supplementary: Amount;
+  /** RE where one exists, else BE, plus supplementary. The live authority. */
+  currentAuthority: Amount;
+  expenditureToDate: Amount;
+  /** Period end of the latest expenditure fact used above. */
+  expenditureAsOf: string | null;
+  balance: Amount;
+  revenueExpenditure: Amount;
+  capitalExpenditure: Amount;
+  burn: BurnMetrics;
+  provenance: {
+    authority: Provenance | null;
+    expenditure: Provenance | null;
+  };
+}
+
+/**
+ * The funding side a fact belongs to (docs/12). A Union source writes the
+ * central ledger; a state treasury portal writes the state ledger. The two are
+ * presented separately and never summed into one figure without netting out the
+ * central transfers that appear in both, which is how the same rupee would
+ * otherwise be counted twice.
+ */
+export type Jurisdiction = 'union' | 'state';
+
+export const JURISDICTION_LABELS: Record<Jurisdiction, string> = {
+  union: 'Union',
+  state: 'State',
+};
+
+/**
+ * Why a Union total and a state total are not added together.
+ *
+ * Surfaced wherever the two ledgers sit near each other, so a reader who is
+ * tempted to sum them sees why the product does not.
+ */
+export const LEDGER_SEPARATION_NOTICE =
+  'Union and state budgets are shown as separate ledgers. They are not added together, because central transfers to a state are already counted in the Union budget and would otherwise be counted twice.';

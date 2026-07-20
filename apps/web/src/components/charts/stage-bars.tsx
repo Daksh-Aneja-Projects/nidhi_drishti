@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 import { formatINRCr } from '@nidhi/core';
 import { Chart, baseChartOption, chartTheme, axisLabelStyle } from '@/components/chart';
-import { strings } from '@/lib/strings';
+import { useStrings } from '@/components/locale-provider';
 
 /**
  * The stage bars: allocated, released, utilised, on one axis with explicit
@@ -43,6 +43,7 @@ interface StageBarsProps {
 const STAGE_COLORS = [chartTheme.onPace, chartTheme.inkSoft, chartTheme.ink] as const;
 
 export function StageBars({ chartId, stages, ariaLabel }: StageBarsProps) {
+  const strings = useStrings();
   const option = useMemo<EChartsOption>(() => {
     const reported = stages
       .map((stage) => stage.value)
@@ -122,7 +123,7 @@ export function StageBars({ chartId, stages, ariaLabel }: StageBarsProps) {
         },
       ],
     };
-  }, [stages]);
+  }, [stages, strings]);
 
   return (
     <Chart

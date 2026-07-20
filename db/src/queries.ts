@@ -30,6 +30,9 @@ import {
   type Severity,
   type SourceFreshness,
   type SourceRegistryEntry,
+  type StateEntity,
+  type StateKind,
+  type StateSummary,
   type Tender,
   type VerificationReport,
 } from '@nidhi/core';
@@ -1096,6 +1099,178 @@ export async function listDigestDays(limit = 30): Promise<string[]> {
   );
   // DATE comes back as a `YYYY-MM-DD` string: see the type parser in client.ts.
   return rows.map((row) => row.day);
+}
+
+/* ------------------------------------------------------------------ *
+ * States (v2, docs/12)
+ *
+ * Appended, not woven into the Union queries above: a state budget is the same
+ * shape of data read from a separate ledger, so it gets its own reader that
+ * maps NUMERIC through parseAmountCr exactly as the ministry reader does, and an
+ * absent figure reaches the UI as NOT_REPORTED rather than as a zero.
+ * ------------------------------------------------------------------ */
+
+interface StateRow {
+  fy: string;
+  state_id: string;
+  name: string;
+  kind: string;
+  region: string | null;
+  be: Numeric;
+  re: Numeric;
+  supplementary: Numeric;
+  current_authority: Numeric;
+  expenditure_to_date: Numeric;
+  expenditure_as_of: string | null;
+  revenue_expenditure: Numeric;
+  capital_expenditure: Numeric;
+  balance: Numeric;
+  pct_spent: Numeric;
+  pct_fy_elapsed: Numeric;
+  burn_ratio: Numeric;
+  authority_source_record_id: number | string | null;
+  expenditure_source_record_id: number | string | null;
+  has_illustrative_source: boolean;
+}
+
+function mapState(row: StateRow, provenance: Map<number, Provenance>): StateSummary {
+  return {
+    fy: row.fy as FiscalYear,
+    stateId: row.state_id,
+    name: row.name,
+    kind: row.kind as StateKind,
+    region: row.region,
+    be: parseAmountCr(row.be),
+    re: parseAmountCr(row.re),
+    supplementary: parseAmountCr(row.supplementary),
+    currentAuthority: parseAmountCr(row.current_authority),
+    expenditureToDate: parseAmountCr(row.expenditure_to_date),
+    expenditureAsOf: row.expenditure_as_of,
+    balance: parseAmountCr(row.balance),
+    revenueExpenditure: parseAmountCr(row.revenue_expenditure),
+    capitalExpenditure: parseAmountCr(row.capital_expenditure),
+    burn: {
+      pctSpent: parseAmountCr(row.pct_spent),
+      pctFyElapsed: row.pct_fy_elapsed === null ? 0 : Number(row.pct_fy_elapsed),
+      burnRatio: parseAmountCr(row.burn_ratio),
+    },
+    provenance: {
+      authority: provenance.get(Number(row.authority_source_record_id)) ?? null,
+      expenditure: provenance.get(Number(row.expenditure_source_record_id)) ?? null,
+    },
+  };
+}
+
+export interface StateListOptions {
+  /** Filter to states or union territories. */
+  kind?: StateKind;
+  region?: string;
+  orderBy?: 'allocation' | 'burn_asc' | 'burn_desc' | 'name' | 'balance';
+  limit?: number;
+}
+
+export async function listStateSummaries(
+  fy: string,
+  options: StateListOptions = {},
+): Promise<StateSummary[]> {
+  const order =
+    {
+      // NULLS LAST throughout: a state with no reported figure sorts to the
+      // bottom, never to the top of an ascending ranking.
+      allocation: 'current_authority DESC NULLS LAST',
+      burn_asc: 'burn_ratio ASC NULLS LAST',
+      burn_desc: 'burn_ratio DESC NULLS LAST',
+      balance: 'balance DESC NULLS LAST',
+      name: 'name ASC',
+    }[options.orderBy ?? 'allocation'] ?? 'current_authority DESC NULLS LAST';
+
+  const rows = await query<StateRow>(
+    `SELECT * FROM mv_state_summary
+     WHERE fy = $1
+       AND ($2::TEXT IS NULL OR kind = $2)
+       AND ($3::TEXT IS NULL OR region = $3)
+     ORDER BY ${order}
+     LIMIT $4`,
+    [fy, options.kind ?? null, options.region ?? null, options.limit ?? 50],
+  );
+  const provenance = await getProvenanceMap(
+    rows.flatMap((row) => [row.authority_source_record_id, row.expenditure_source_record_id]),
+  );
+  return rows.map((row) => mapState(row, provenance));
+}
+
+export async function getStateSummary(fy: string, stateId: string): Promise<StateSummary | null> {
+  const row = await queryOne<StateRow>(
+    `SELECT * FROM mv_state_summary WHERE fy = $1 AND state_id = $2`,
+    [fy, stateId],
+  );
+  if (!row) return null;
+  const provenance = await getProvenanceMap([
+    row.authority_source_record_id,
+    row.expenditure_source_record_id,
+  ]);
+  return mapState(row, provenance);
+}
+
+/** State expenditure across several fiscal years, for the year-on-year trend. */
+export async function getStateAllocationHistory(
+  stateId: string,
+  fiscalYears: readonly string[],
+): Promise<Array<{ fy: FiscalYear; be: Amount; re: Amount; expenditure: Amount }>> {
+  const rows = await query<{
+    fy: string;
+    be: Numeric;
+    re: Numeric;
+    expenditure_to_date: Numeric;
+  }>(
+    `SELECT fy, be, re, expenditure_to_date
+     FROM mv_state_summary
+     WHERE state_id = $1 AND fy = ANY($2::TEXT[])
+     ORDER BY fy`,
+    [stateId, fiscalYears],
+  );
+  return rows.map((row) => ({
+    fy: row.fy as FiscalYear,
+    be: parseAmountCr(row.be),
+    re: parseAmountCr(row.re),
+    expenditure: parseAmountCr(row.expenditure_to_date),
+  }));
+}
+
+/** Distinct regions present in a fiscal year, for filters and the map. */
+export async function listStateRegions(fy: string): Promise<string[]> {
+  const rows = await query<{ region: string }>(
+    `SELECT DISTINCT region FROM mv_state_summary
+     WHERE fy = $1 AND region IS NOT NULL ORDER BY region`,
+    [fy],
+  );
+  return rows.map((row) => row.region);
+}
+
+/** The reference list of states and union territories, for pickers and the map. */
+export async function listStates(options: { kind?: StateKind } = {}): Promise<StateEntity[]> {
+  const rows = await query<{
+    state_id: string;
+    name: string;
+    kind: string;
+    region: string | null;
+    has_legislature: boolean;
+    active: boolean;
+  }>(
+    `SELECT state_id, name, kind, region, has_legislature, active
+     FROM state
+     WHERE active AND ($1::TEXT IS NULL OR kind = $1)
+     ORDER BY name`,
+    [options.kind ?? null],
+  );
+  return rows.map((row) => ({
+    stateId: row.state_id,
+    name: row.name,
+    kind: row.kind as StateKind,
+    region: row.region,
+    hasLegislature: row.has_legislature,
+    active: row.active,
+  }));
 }
 
 /** Amount helper re-exported so callers do not need a second import. */

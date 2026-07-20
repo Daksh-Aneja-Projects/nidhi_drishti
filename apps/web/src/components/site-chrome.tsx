@@ -1,10 +1,11 @@
-import Link from 'next/link';
 import { Info } from 'lucide-react';
 import { DEMO_DATA_NOTICE, SITE_DISCLAIMER, type DataMode, type FiscalYear } from '@nidhi/core';
 import { Icon } from '@/components/icon';
 import { FyPicker } from '@/components/fy-picker';
+import { LanguageToggle } from '@/components/language-toggle';
+import { Link } from '@/components/locale-link';
 import { SearchBox } from '@/components/search-box';
-import { strings } from '@/lib/strings';
+import { getStrings } from '@/lib/i18n-server';
 
 /**
  * Header, footer, and the illustrative-data banner.
@@ -14,15 +15,22 @@ import { strings } from '@/lib/strings';
  * on a government form.
  */
 
-const NAV_LINKS = [
-  { href: '/', label: strings.nav.overview },
-  { href: '/ministries', label: strings.nav.ministries },
-  { href: '/schemes', label: strings.nav.schemes },
-  { href: '/flags', label: strings.nav.flags },
-  { href: '/compare', label: strings.nav.compare },
-];
+export async function SiteHeader({
+  fy,
+  availableFy,
+}: {
+  fy: FiscalYear;
+  availableFy: FiscalYear[];
+}) {
+  const strings = await getStrings();
+  const navLinks = [
+    { href: '/', label: strings.nav.overview },
+    { href: '/ministries', label: strings.nav.ministries },
+    { href: '/schemes', label: strings.nav.schemes },
+    { href: '/flags', label: strings.nav.flags },
+    { href: '/compare', label: strings.nav.compare },
+  ];
 
-export function SiteHeader({ fy, availableFy }: { fy: FiscalYear; availableFy: FiscalYear[] }) {
   return (
     <header className="border-b border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper-raised)]">
       <div className="mx-auto flex max-w-[90rem] flex-wrap items-center gap-x-8 gap-y-3 px-4 py-3 sm:px-6">
@@ -39,9 +47,9 @@ export function SiteHeader({ fy, availableFy }: { fy: FiscalYear; availableFy: F
           </span>
         </Link>
 
-        <nav aria-label="Primary" className="order-3 w-full lg:order-none lg:w-auto">
+        <nav aria-label={strings.a11y.primaryNav} className="order-3 w-full lg:order-none lg:w-auto">
           <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
@@ -57,6 +65,7 @@ export function SiteHeader({ fy, availableFy }: { fy: FiscalYear; availableFy: F
         <div className="ml-auto flex items-center gap-3">
           <SearchBox />
           <FyPicker fy={fy} available={availableFy} />
+          <LanguageToggle />
         </div>
       </div>
     </header>
@@ -92,7 +101,8 @@ export function DataModeBanner({ mode }: { mode: DataMode }) {
   );
 }
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const strings = await getStrings();
   return (
     <footer className="mt-16 border-t-2 border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper-raised)]">
       <div className="mx-auto max-w-[90rem] px-4 py-8 sm:px-6">
@@ -105,7 +115,7 @@ export function SiteFooter() {
             </p>
           </div>
 
-          <nav aria-label="Secondary">
+          <nav aria-label={strings.a11y.secondaryNav}>
             <ul className="space-y-1.5 text-[13px]">
               <FooterLink href="/methodology">{strings.nav.methodology}</FooterLink>
               <FooterLink href="/sources">{strings.nav.sources}</FooterLink>

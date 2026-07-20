@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 import { formatINRCompact, formatINRCr } from '@nidhi/core';
 import { Chart, axisLabelStyle, baseChartOption, chartTheme } from '@/components/chart';
-import { strings } from '@/lib/strings';
+import { useStrings } from '@/components/locale-provider';
 
 /**
  * Budget estimate to balance, one step per stage.
@@ -40,10 +40,13 @@ interface Column {
   valueText: string;
 }
 
-function buildColumns(steps: WaterfallStep[]): Column[] {
+function buildColumns(steps: WaterfallStep[], notReportedLabel: string): Column[] {
   let running: number | null = 0;
   return steps.map((step) => {
-    const valueText = step.value === null ? strings.common.notReported : formatINRCr(step.value, { signed: step.kind === 'delta' });
+    const valueText =
+      step.value === null
+        ? notReportedLabel
+        : formatINRCr(step.value, { signed: step.kind === 'delta' });
 
     if (step.value === null) {
       running = null;
@@ -80,7 +83,8 @@ export function AllocationWaterfall({
   height = 320,
   ariaLabel,
 }: AllocationWaterfallProps) {
-  const columns = useMemo(() => buildColumns(steps), [steps]);
+  const strings = useStrings();
+  const columns = useMemo(() => buildColumns(steps, strings.common.notReported), [steps, strings]);
 
   const option = useMemo<EChartsOption>(() => {
     return {

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   AlertTriangle,
@@ -15,7 +14,6 @@ import {
   EXTRACTION_METHOD_LABELS,
   FISCAL_STAGE_LABELS,
   add,
-  formatFiscalYearLong,
   formatINRCr,
   formatPercent,
   isNotReported,
@@ -55,9 +53,10 @@ import {
   Section,
   TableScroll,
 } from '@/components/layout-primitives';
-import { formatIstDate, formatIstDateTime } from '@/lib/format';
+import { Link } from '@/components/locale-link';
+import { formatFiscalYearLong, formatIstDate, formatIstDateTime } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * P2, the ministry page.
@@ -71,14 +70,6 @@ export const revalidate = 300;
 
 const TABS = ['overview', 'schemes', 'verification', 'flags', 'sources'] as const;
 type Tab = (typeof TABS)[number];
-
-const TAB_LABELS: Record<Tab, string> = {
-  overview: strings.ministry.tabs.overview,
-  schemes: strings.ministry.tabs.schemes,
-  verification: strings.ministry.tabs.verification,
-  flags: strings.ministry.tabs.flags,
-  sources: strings.ministry.tabs.sources,
-};
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -98,7 +89,12 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const [{ id }, query, strings, locale] = await Promise.all([
+    params,
+    searchParams,
+    getStrings(),
+    getLocale(),
+  ]);
   try {
     const { fy } = await resolveFy(query.fy);
     const ministry = await getMinistrySummary(fy, id);
@@ -109,7 +105,7 @@ export async function generateMetadata({
         ministry.currentAuthority,
       )}, expenditure accounted to date ${formatINRCr(
         ministry.expenditureToDate,
-      )} for ${formatFiscalYearLong(fy)}, with the source record behind every figure.`,
+      )} for ${formatFiscalYearLong(fy, locale)}, with the source record behind every figure.`,
     };
   } catch {
     return { title: strings.common.ministry };
@@ -123,8 +119,20 @@ export default async function MinistryPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const [{ id }, query, strings, locale] = await Promise.all([
+    params,
+    searchParams,
+    getStrings(),
+    getLocale(),
+  ]);
   const tab = resolveTab(query.tab);
+  const tabLabels: Record<Tab, string> = {
+    overview: strings.ministry.tabs.overview,
+    schemes: strings.ministry.tabs.schemes,
+    verification: strings.ministry.tabs.verification,
+    flags: strings.ministry.tabs.flags,
+    sources: strings.ministry.tabs.sources,
+  };
 
   let fy = 'FY2026';
   let ministry: MinistrySummary | null = null;
@@ -167,7 +175,7 @@ export default async function MinistryPage({
 
         <header className="mb-6 border-b-2 border-[color:var(--color-rule-strong)] pb-5">
           <p className="eyebrow mb-1.5">
-            {formatFiscalYearLong(fy)}
+            {formatFiscalYearLong(fy, locale)}
             {ministry.sector ? ` · ${ministry.sector}` : ''}
           </p>
           <h1 className="font-display text-[clamp(1.6rem,3.4vw,2.4rem)] leading-[1.1]">
@@ -199,7 +207,7 @@ export default async function MinistryPage({
                         : 'border-transparent text-[color:var(--color-ink-faint)] hover:text-[color:var(--color-ink)]'
                     }`}
                   >
-                    {TAB_LABELS[item]}
+                    {tabLabels[item]}
                   </Link>
                 </li>
               );
@@ -230,6 +238,7 @@ function toBars(points: readonly MonthlySpendPoint[]): MonthlyBar[] {
 }
 
 async function OverviewTab({ ministry, fy }: { ministry: MinistrySummary; fy: string }) {
+  const strings = await getStrings();
   const priorFy = previousFiscalYear(fy);
 
   let monthly: MonthlySpendPoint[] = [];
@@ -414,6 +423,7 @@ function negate(value: MinistrySummary['be']): number | null {
  * ------------------------------------------------------------------ */
 
 async function SchemesTab({ ministryId, fy }: { ministryId: string; fy: string }) {
+  const strings = await getStrings();
   let schemes: SchemeSummary[] = [];
   try {
     schemes = await listSchemeSummaries(fy, { ministryId, orderBy: 'allocation', limit: 300 });
@@ -521,6 +531,7 @@ async function SchemesTab({ ministryId, fy }: { ministryId: string; fy: string }
  * ------------------------------------------------------------------ */
 
 async function VerificationTab({ ministryId, fy }: { ministryId: string; fy: string }) {
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
   let report: VerificationReport | null = null;
   try {
     report = await getLatestVerificationReport('ministry', ministryId, fy);
@@ -542,7 +553,7 @@ async function VerificationTab({ ministryId, fy }: { ministryId: string; fy: str
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <Chip tone="seal">{strings.verification.aiLabel}</Chip>
               <span className="text-[13px] text-[color:var(--color-ink-faint)]">
-                {strings.verification.generated} {formatIstDateTime(report.generatedAt)}
+                {strings.verification.generated} {formatIstDateTime(report.generatedAt, locale)}
               </span>
             </div>
 
@@ -580,7 +591,7 @@ async function VerificationTab({ ministryId, fy }: { ministryId: string; fy: str
                         )}
                         {citation.date ? (
                           <span className="ml-2 text-[color:var(--color-ink-faint)]">
-                            {formatIstDate(citation.date)}
+                            {formatIstDate(citation.date, locale)}
                           </span>
                         ) : null}
                       </span>
@@ -601,6 +612,7 @@ async function VerificationTab({ ministryId, fy }: { ministryId: string; fy: str
  * ------------------------------------------------------------------ */
 
 async function FlagsTab({ ministryId, fy }: { ministryId: string; fy: string }) {
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
   let flags: AnomalyFlag[] = [];
   try {
     flags = await listFlags({ fy, entityType: 'ministry', entityId: ministryId, limit: 50 });
@@ -627,7 +639,7 @@ async function FlagsTab({ ministryId, fy }: { ministryId: string; fy: string }) 
                     <Chip tone="seal">{flag.severity}</Chip>
                     <Chip tone="muted">{rule.label}</Chip>
                     <span className="text-[11px] text-[color:var(--color-ink-faint)]">
-                      {formatIstDate(flag.createdAt)}
+                      {formatIstDate(flag.createdAt, locale)}
                     </span>
                   </div>
                   <p className="max-w-[70ch] text-[14px] leading-relaxed">{flag.explanation}</p>
@@ -670,6 +682,7 @@ async function FlagsTab({ ministryId, fy }: { ministryId: string; fy: string }) 
  * ------------------------------------------------------------------ */
 
 async function SourcesTab({ ministry, fy }: { ministry: MinistrySummary; fy: string }) {
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
   let monthly: MonthlySpendPoint[] = [];
   let registry: SourceRegistryEntry[] = [];
   try {
@@ -726,10 +739,10 @@ async function SourcesTab({ ministry, fy }: { ministry: MinistrySummary; fy: str
                     </td>
                     <td className="text-[13px]">
                       {record.documentDate
-                        ? formatIstDate(record.documentDate)
+                        ? formatIstDate(record.documentDate, locale)
                         : strings.common.notStated}
                     </td>
-                    <td className="text-[13px]">{formatIstDateTime(record.fetchedAt)}</td>
+                    <td className="text-[13px]">{formatIstDateTime(record.fetchedAt, locale)}</td>
                     <td className="text-[13px]">
                       {EXTRACTION_METHOD_LABELS[record.extractionMethod]}
                     </td>

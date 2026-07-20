@@ -4,8 +4,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { EChartsOption } from 'echarts';
 import { Table } from 'lucide-react';
 import { Icon } from '@/components/icon';
+import { useStrings } from '@/components/locale-provider';
 import { track } from '@/lib/analytics';
-import { strings } from '@/lib/strings';
 
 /** Minimal surface of an ECharts instance, so the module stays type-only imported. */
 interface EChartsInstance {
@@ -133,6 +133,7 @@ interface ChartProps {
 }
 
 export function Chart({ chartId, option, height = 280, ariaLabel, table, onSelect }: ChartProps) {
+  const strings = useStrings();
   const containerRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<EChartsInstance | null>(null);
   const [ready, setReady] = useState(false);

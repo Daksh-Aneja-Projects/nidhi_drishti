@@ -6,8 +6,10 @@ import { isFiscalYear } from '@nidhi/core';
 import { query } from '@nidhi/db';
 import { Callout, PageHeader, PageShell, Section } from '@/components/layout-primitives';
 import { Icon } from '@/components/icon';
+import { Link } from '@/components/locale-link';
 import { consumeRateLimit } from '@/lib/rate-limit';
-import { strings } from '@/lib/strings';
+import { getLocale, getStrings } from '@/lib/i18n-server';
+import { localePath } from '@/lib/i18n';
 
 /**
  * Report an error in a figure (docs/08 section 2).
@@ -19,10 +21,13 @@ import { strings } from '@/lib/strings';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: strings.corrections.title,
-  description: strings.corrections.lede,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.corrections.title,
+    description: strings.corrections.lede,
+  };
+}
 
 const ENTITY_CHOICES = ['ministry', 'scheme', 'national'] as const;
 
@@ -33,8 +38,13 @@ function text(value: FormDataEntryValue | null, max: number): string {
 async function submitCorrection(formData: FormData): Promise<void> {
   'use server';
 
+  // The form posts to the current URL, so the middleware has already resolved
+  // the locale for this request. Keep the reader in it across the redirect.
+  const locale = await getLocale();
+  const back = (outcome: string) => localePath(`/corrections?outcome=${outcome}`, locale);
+
   const note = text(formData.get('note'), 4000);
-  if (note.length === 0) redirect('/corrections?outcome=empty');
+  if (note.length === 0) redirect(back('empty'));
 
   const entityTypeRaw = text(formData.get('entityType'), 20);
   const entityType = (ENTITY_CHOICES as readonly string[]).includes(entityTypeRaw)
@@ -60,7 +70,7 @@ async function submitCorrection(formData: FormData): Promise<void> {
     // A public unauthenticated write needs a ceiling, and the limiter degrades
     // to an in-process bucket rather than failing the submission.
     const allowance = await consumeRateLimit(`correction:${address}`, 5);
-    if (!allowance.allowed) redirect('/corrections?outcome=failed');
+    if (!allowance.allowed) redirect(back('failed'));
 
     await query(
       `INSERT INTO correction (entity_type, entity_id, fy, reporter_note)
@@ -74,7 +84,7 @@ async function submitCorrection(formData: FormData): Promise<void> {
     console.error('[corrections] could not record the report', error);
   }
 
-  redirect(saved ? '/corrections?outcome=received' : '/corrections?outcome=failed');
+  redirect(saved ? back('received') : back('failed'));
 }
 
 export default async function CorrectionsPage({
@@ -82,7 +92,7 @@ export default async function CorrectionsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
+  const [params, strings] = await Promise.all([searchParams, getStrings()]);
   const outcomeRaw = params.outcome;
   const outcome = Array.isArray(outcomeRaw) ? outcomeRaw[0] : outcomeRaw;
 
@@ -202,7 +212,7 @@ export default async function CorrectionsPage({
           <div className="prose-civic mt-4">
             <p>{strings.methodology.correctionsBody}</p>
             <p>
-              <a href="/methodology">{strings.nav.methodology}</a>
+              <Link href="/methodology">{strings.nav.methodology}</Link>
             </p>
           </div>
         </Section>

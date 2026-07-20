@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { DigestEditionView } from './edition';
 import { istToday, loadDigest, loadDigestDays } from '@/lib/digest';
+import { getStrings } from '@/lib/i18n-server';
 import { siteUrl } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * The digest, human-readable counterpart of the feeds (docs/05 A6, docs/07).
@@ -22,6 +22,7 @@ import { strings } from '@/lib/strings';
 export const revalidate = 600;
 
 export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
   return {
     title: strings.digest.title,
     description: strings.digest.lede,

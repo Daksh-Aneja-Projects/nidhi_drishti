@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Flag } from 'lucide-react';
 import {
   ANOMALY_RULES,
-  formatFiscalYearLong,
   type AnomalyFlag,
   type AnomalyRuleId,
   type FiscalYear,
@@ -13,8 +12,9 @@ import { listFlags, listMinistrySummaries, listSchemeSummaries } from '@nidhi/db
 import { FlagCard } from '@/components/flag-card';
 import { FlagFilters, type FilterSpec } from '@/components/flag-filters';
 import { EmptyState, PageHeader, PageShell } from '@/components/layout-primitives';
+import { formatFiscalYearLong } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * P4, the signal feed.
@@ -40,13 +40,8 @@ function first(value: string | string[] | undefined): string {
 const RULE_IDS = Object.keys(ANOMALY_RULES) as AnomalyRuleId[];
 const SEVERITIES: readonly Severity[] = ['high', 'notable', 'info'];
 
-const SEVERITY_LABELS: Record<Severity, string> = {
-  high: strings.flags.severityHigh,
-  notable: strings.flags.severityNotable,
-  info: strings.flags.severityInfo,
-};
-
 export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
   return {
     title: strings.flags.title,
     description: strings.flags.intro,
@@ -65,7 +60,12 @@ export default async function FlagsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
+  const [params, strings, locale] = await Promise.all([searchParams, getStrings(), getLocale()]);
+  const severityLabels: Record<Severity, string> = {
+    high: strings.flags.severityHigh,
+    notable: strings.flags.severityNotable,
+    info: strings.flags.severityInfo,
+  };
   const rawRule = first(params.rule);
   const ruleId = RULE_IDS.find((id) => id === rawRule);
   const rawSeverity = first(params.severity);
@@ -134,7 +134,7 @@ export default async function FlagsPage({
       value: severity ?? '',
       options: [
         { value: '', label: strings.flags.allSeverities },
-        ...SEVERITIES.map((value) => ({ value, label: SEVERITY_LABELS[value] })),
+        ...SEVERITIES.map((value) => ({ value, label: severityLabels[value] })),
       ],
     },
     {
@@ -157,7 +157,7 @@ export default async function FlagsPage({
             value: data.fy as string,
             options: data.available.map((year) => ({
               value: year as string,
-              label: formatFiscalYearLong(year),
+              label: formatFiscalYearLong(year, locale),
             })),
           },
         ]
@@ -167,7 +167,7 @@ export default async function FlagsPage({
   return (
     <PageShell>
       <PageHeader
-        eyebrow={formatFiscalYearLong(data.fy)}
+        eyebrow={formatFiscalYearLong(data.fy, locale)}
         title={strings.flags.title}
         lede={strings.flags.intro}
       />

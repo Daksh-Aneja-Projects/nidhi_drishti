@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 import { FISCAL_STAGE_LABELS, formatINRCompact, formatINRCr } from '@nidhi/core';
 import { Chart, axisLabelStyle, baseChartOption, chartTheme } from '@/components/chart';
-import { strings } from '@/lib/strings';
+import { useStrings } from '@/components/locale-provider';
 
 /**
  * Allocation across five financial years.
@@ -28,16 +28,15 @@ interface YoyAllocationChartProps {
   ariaLabel: string;
 }
 
-function amountText(value: number | null): string {
-  return value === null ? strings.common.notReported : formatINRCr(value);
-}
-
 export function YoyAllocationChart({
   chartId,
   rows,
   height = 300,
   ariaLabel,
 }: YoyAllocationChartProps) {
+  const strings = useStrings();
+  const amountText = (value: number | null): string =>
+    value === null ? strings.common.notReported : formatINRCr(value);
   const option = useMemo<EChartsOption>(() => {
     const series = [
       { name: FISCAL_STAGE_LABELS.BE, color: chartTheme.behindSoft, pick: (row: YoyRow) => row.be },
@@ -97,7 +96,7 @@ export function YoyAllocationChart({
         amountText(row.expenditure),
       ]),
     }),
-    [rows],
+    [rows, strings, amountText],
   );
 
   return (

@@ -1,11 +1,11 @@
-import Link from 'next/link';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { isNotReported, type Amount, type MinistrySummary } from '@nidhi/core';
 import { Figure } from '@/components/figure';
 import { Icon } from '@/components/icon';
+import { Link } from '@/components/locale-link';
 import { PaceChip } from '@/components/pace-track';
 import { TableScroll } from '@/components/layout-primitives';
-import { strings } from '@/lib/strings';
+import { getStrings } from '@/lib/i18n-server';
 
 /**
  * The ministry register.
@@ -97,22 +97,22 @@ interface MinistryTableProps {
   basePath?: string;
 }
 
-const COLUMNS: Array<{ key: MinistrySort; label: string; numeric: boolean }> = [
-  { key: 'name', label: strings.ministries.colName, numeric: false },
-  { key: 'authority', label: strings.ministries.colAuthority, numeric: true },
-  { key: 'spent', label: strings.ministries.colSpent, numeric: true },
-  { key: 'balance', label: strings.ministries.colBalance, numeric: true },
-  { key: 'pace', label: strings.ministries.colPace, numeric: false },
-  { key: 'signals', label: strings.ministries.colSignals, numeric: true },
-];
-
-export function MinistryTable({
+export async function MinistryTable({
   rows,
   fy,
   sort,
   dir,
   basePath = '/ministries',
 }: MinistryTableProps) {
+  const strings = await getStrings();
+  const columns: Array<{ key: MinistrySort; label: string; numeric: boolean }> = [
+    { key: 'name', label: strings.ministries.colName, numeric: false },
+    { key: 'authority', label: strings.ministries.colAuthority, numeric: true },
+    { key: 'spent', label: strings.ministries.colSpent, numeric: true },
+    { key: 'balance', label: strings.ministries.colBalance, numeric: true },
+    { key: 'pace', label: strings.ministries.colPace, numeric: false },
+    { key: 'signals', label: strings.ministries.colSignals, numeric: true },
+  ];
   const sorted = sortMinistries(rows, sort, dir);
 
   return (
@@ -120,7 +120,7 @@ export function MinistryTable({
       <table className="data-table">
         <thead>
           <tr>
-            {COLUMNS.map((column) => {
+            {columns.map((column) => {
               const active = column.key === sort;
               const nextDir: SortDirection = active && dir === 'desc' ? 'asc' : 'desc';
               return (

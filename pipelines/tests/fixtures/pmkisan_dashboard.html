@@ -1,0 +1,32 @@
+<html>
+<head><title>PM-KISAN Dashboard</title></head>
+<body>
+  <h1>PM-KISAN Samman Nidhi</h1>
+  <h2>National Dashboard, FY 2025-26</h2>
+  <p>All figures are national aggregates, cumulative for the financial year.
+     Amounts in Rs. Crore.</p>
+
+  <div class="summary">
+    <div class="stat-tile">Total Beneficiaries 11,08,72,455</div>
+    <div class="stat-tile">Total Funds Transferred Rs. 21,450.00 crore</div>
+  </div>
+
+  <!--
+    A beneficiary-level table also appears on some portal views. docs/08
+    section 4 forbids ingesting it, and the parser refuses any table whose
+    header carries beneficiary-level markers. The row below must never be read.
+  -->
+  <table id="beneficiary-list">
+    <tr>
+      <th>Registration No</th>
+      <th>Beneficiary Name</th>
+      <th>Village</th>
+      <th>Amount</th>
+    </tr>
+    <tr><td>UP-0001-XXXX</td><td>REDACTED NAME</td><td>Anytown</td><td>6000</td></tr>
+    <tr><td>MH-0002-XXXX</td><td>REDACTED NAME</td><td>Anyplace</td><td>6000</td></tr>
+  </table>
+
+  <p>Source: Ministry of Agriculture and Farmers Welfare, pmkisan.gov.in</p>
+</body>
+</html>

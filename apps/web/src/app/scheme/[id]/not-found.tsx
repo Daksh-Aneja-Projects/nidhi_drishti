@@ -1,6 +1,6 @@
 import { Layers } from 'lucide-react';
 import { EmptyState, PageHeader, PageShell } from '@/components/layout-primitives';
-import { strings } from '@/lib/strings';
+import { getStrings } from '@/lib/i18n-server';
 
 /**
  * Shown when a scheme id is not in the records for the year being viewed.
@@ -10,7 +10,8 @@ import { strings } from '@/lib/strings';
  * separately that year. None of those are errors on the reader's part, so the
  * copy points onward to the full list rather than blaming the address.
  */
-export default function SchemeNotFound() {
+export default async function SchemeNotFound() {
+  const strings = await getStrings();
   return (
     <PageShell>
       <PageHeader title={strings.scheme.notFoundTitle} />

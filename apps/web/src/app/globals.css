@@ -50,13 +50,14 @@
          communicated by hue and by hatching, not by being hard to see. --- */
   --color-unreported: #666a65;
 
-  /* --- Type. IBM Plex across three roles. Plex carries Devanagari in all
-         three, so the planned Hindi interface will not need a second type
-         system bolted on beside this one. --- */
-  --font-display: var(--font-plex-condensed), "IBM Plex Sans Condensed", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-plex-serif), "IBM Plex Serif", ui-serif, Georgia, serif;
-  --font-data: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
-  --font-ui: var(--font-plex-sans), "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  /* --- Type. IBM Plex across three roles. Devanagari is a sibling Plex face
+         (--font-plex-devanagari) appended to every stack, so a Latin glyph is
+         drawn from the role font and a Devanagari glyph on the Hindi interface
+         falls through to the same design language rather than a system face. --- */
+  --font-display: var(--font-plex-condensed), "IBM Plex Sans Condensed", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-plex-serif), "IBM Plex Serif", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-serif, Georgia, serif;
+  --font-data: var(--font-plex-mono), "IBM Plex Mono", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-monospace, "SFMono-Regular", monospace;
+  --font-ui: var(--font-plex-sans), "IBM Plex Sans", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
 
   /* --- Radius. Forms and stamps are not rounded. 2px is the whole budget. --- */
   --radius-sm: 2px;

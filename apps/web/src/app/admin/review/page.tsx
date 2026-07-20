@@ -12,7 +12,7 @@ import {
 } from '@/components/layout-primitives';
 import { formatIstDateTime } from '@/lib/format';
 import { hasInternalAccess } from '@/lib/api';
-import { strings } from '@/lib/strings';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { approveFlag, rejectFlag } from '@/app/admin/review/actions';
 
 /**
@@ -29,10 +29,13 @@ import { approveFlag, rejectFlag } from '@/app/admin/review/actions';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: strings.admin.reviewTitle,
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.admin.reviewTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 function MetricList({ flag }: { flag: AnomalyFlag }) {
   const entries = Object.entries(flag.metric);
@@ -50,6 +53,7 @@ function MetricList({ flag }: { flag: AnomalyFlag }) {
 }
 
 export default async function AdminReviewPage() {
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
   if (!(await hasInternalAccess())) {
     return (
       <PageShell>
@@ -106,7 +110,7 @@ export default async function AdminReviewPage() {
                     <Chip tone="seal">{flag.severity}</Chip>
                     <Chip tone="muted">{flag.fy}</Chip>
                     <span className="text-[12px] text-[color:var(--color-ink-faint)]">
-                      {strings.admin.raised} {formatIstDateTime(flag.createdAt)}
+                      {strings.admin.raised} {formatIstDateTime(flag.createdAt, locale)}
                     </span>
                   </div>
 

@@ -1,12 +1,12 @@
-import Link from 'next/link';
 import { CalendarDays, Rss } from 'lucide-react';
 import { EvidenceTimeline } from '@/components/evidence-timeline';
 import { Icon } from '@/components/icon';
 import { FlagCard } from '@/components/flag-card';
 import { Callout, EmptyState, PageHeader, PageShell, Section } from '@/components/layout-primitives';
+import { Link } from '@/components/locale-link';
 import type { DigestEdition } from '@/lib/digest';
 import { formatIstDate } from '@/lib/format';
-import { strings } from '@/lib/strings';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 
 /**
  * One digest edition, rendered.
@@ -26,7 +26,7 @@ import { strings } from '@/lib/strings';
  * reader sees is inside a signal card, next to the rule that measured it.
  */
 
-export function DigestEditionView({
+export async function DigestEditionView({
   edition,
   recentDays,
   isToday,
@@ -35,7 +35,8 @@ export function DigestEditionView({
   recentDays: readonly string[];
   isToday: boolean;
 }) {
-  const dayLabel = formatIstDate(edition.day);
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
+  const dayLabel = formatIstDate(edition.day, locale);
 
   return (
     <PageShell>
@@ -105,7 +106,7 @@ export function DigestEditionView({
                   className="figure text-[13px] underline decoration-[color:var(--color-rule-strong)] underline-offset-2 hover:decoration-[color:var(--color-ink)]"
                   aria-current={day === edition.day ? 'page' : undefined}
                 >
-                  {formatIstDate(day)}
+                  {formatIstDate(day, locale)}
                 </Link>
               </li>
             ))}

@@ -13,7 +13,8 @@ import {
   Section,
   TableScroll,
 } from '@/components/layout-primitives';
-import { strings } from '@/lib/strings';
+import { Link } from '@/components/locale-link';
+import { getStrings } from '@/lib/i18n-server';
 
 /**
  * The methodology page docs/08 requires: rules, sources, limitations, the
@@ -25,12 +26,16 @@ import { strings } from '@/lib/strings';
  * also means the published list cannot drift from the list actually collected.
  */
 
-export const metadata: Metadata = {
-  title: strings.methodology.title,
-  description: strings.methodology.lede,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.methodology.title,
+    description: strings.methodology.lede,
+  };
+}
 
-export default function MethodologyPage() {
+export default async function MethodologyPage() {
+  const strings = await getStrings();
   return (
     <PageShell>
       <PageHeader
@@ -113,7 +118,7 @@ export default function MethodologyPage() {
         <div className="prose-civic">
           <p>{strings.methodology.correctionsBody}</p>
           <p>
-            <a href="/corrections">{strings.footer.corrections}</a>
+            <Link href="/corrections">{strings.footer.corrections}</Link>
           </p>
         </div>
       </Section>

@@ -8,8 +8,9 @@ import {
 } from '@nidhi/core';
 import { Icon } from '@/components/icon';
 import { Callout, Chip, EmptyState } from '@/components/layout-primitives';
+import { getLocale, getStrings } from '@/lib/i18n-server';
+import type { Strings } from '@/lib/strings';
 import { formatIstDate } from '@/lib/format';
-import { strings } from '@/lib/strings';
 
 /**
  * The evidence stream: press releases, parliament answers, reporting, and
@@ -42,7 +43,11 @@ interface Entry {
   isTender: boolean;
 }
 
-function toEntries(items: readonly EvidenceItem[], tenders: readonly Tender[]): Entry[] {
+function toEntries(
+  items: readonly EvidenceItem[],
+  tenders: readonly Tender[],
+  strings: Strings,
+): Entry[] {
   const fromEvidence: Entry[] = items.map((item) => ({
     anchor: evidenceAnchor(item.evidenceId),
     date: item.publishedDate,
@@ -75,7 +80,7 @@ function toEntries(items: readonly EvidenceItem[], tenders: readonly Tender[]): 
   });
 }
 
-export function EvidenceTimeline({
+export async function EvidenceTimeline({
   items = [],
   tenders = [],
   emptyBody,
@@ -86,7 +91,8 @@ export function EvidenceTimeline({
   emptyBody?: string;
   showCaveat?: boolean;
 }) {
-  const entries = toEntries(items, tenders);
+  const [strings, locale] = await Promise.all([getStrings(), getLocale()]);
+  const entries = toEntries(items, tenders, strings);
 
   if (entries.length === 0) {
     return (
@@ -115,7 +121,7 @@ export function EvidenceTimeline({
             />
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="figure text-[11px] text-[color:var(--color-ink-faint)]">
-                {entry.date ? formatIstDate(entry.date) : strings.evidence.undated}
+                {entry.date ? formatIstDate(entry.date, locale) : strings.evidence.undated}
               </span>
               <Chip tone={entry.isTender ? 'muted' : 'neutral'}>{entry.kindLabel}</Chip>
             </div>

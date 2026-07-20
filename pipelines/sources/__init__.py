@@ -31,6 +31,13 @@ SOURCE_MODULES: dict[str, str] = {
     "ogd_datasets": "pipelines.sources.ogd_datasets.pipeline",
     "obi_historical": "pipelines.sources.obi_historical.pipeline",
     "sansad_qa": "pipelines.sources.sansad_qa.pipeline",
+    # Scheme-specific portals (docs/03 section 2.6, roadmap v1.1).
+    "mgnrega": "pipelines.sources.mgnrega.pipeline",
+    "pmkisan": "pipelines.sources.pmkisan.pipeline",
+    "jal_jeevan": "pipelines.sources.jal_jeevan.pipeline",
+    # v2 state budgets (docs/12).
+    "state_karnataka": "pipelines.sources.state_karnataka.pipeline",
+    "state_odisha": "pipelines.sources.state_odisha.pipeline",
 }
 
 

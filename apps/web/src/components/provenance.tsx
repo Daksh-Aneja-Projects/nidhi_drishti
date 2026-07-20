@@ -10,8 +10,8 @@ import {
   type Provenance,
 } from '@nidhi/core';
 import { Icon } from '@/components/icon';
+import { useLocale, useStrings } from '@/components/locale-provider';
 import { track } from '@/lib/analytics';
-import { strings } from '@/lib/strings';
 import { formatIstDate, formatIstDateTime } from '@/lib/format';
 
 /**
@@ -40,6 +40,8 @@ export function ProvenancePopover({
   stage,
   children,
 }: ProvenancePopoverProps) {
+  const strings = useStrings();
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
 
@@ -95,7 +97,7 @@ export function ProvenancePopover({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Close"
+              aria-label={strings.a11y.close}
               className="cursor-pointer text-[color:var(--color-ink-faint)] hover:text-[color:var(--color-ink)]"
             >
               <Icon icon={X} size="sm" />
@@ -118,11 +120,13 @@ export function ProvenancePopover({
               </ProvenanceRow>
 
               <ProvenanceRow label={strings.provenance.documentDate}>
-                {provenance.documentDate ? formatIstDate(provenance.documentDate) : 'Not stated'}
+                {provenance.documentDate
+                  ? formatIstDate(provenance.documentDate, locale)
+                  : strings.common.notStated}
               </ProvenanceRow>
 
               <ProvenanceRow label={strings.provenance.fetched}>
-                {formatIstDateTime(provenance.fetchedAt)}
+                {formatIstDateTime(provenance.fetchedAt, locale)}
               </ProvenanceRow>
 
               <ProvenanceRow label={strings.provenance.method}>

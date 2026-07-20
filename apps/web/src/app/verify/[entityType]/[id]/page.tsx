@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FileSearch } from 'lucide-react';
 import {
   AI_NARRATIVE_NOTICE,
-  formatFiscalYearLong,
   formatPercent,
   subtract,
   type Confidence,
@@ -40,9 +38,12 @@ import {
   VerificationTracker,
   type CitationAnchors,
 } from '@/components/verification-narrative';
-import { formatIstDate } from '@/lib/format';
+import { Link } from '@/components/locale-link';
+import { formatFiscalYearLong, formatIstDate } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
+import type { Strings } from '@/lib/strings';
+import { type Locale } from '@/lib/i18n';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * P5, the verification view. The page the product exists for.
@@ -70,11 +71,13 @@ function first(value: string | string[] | undefined): string {
 
 const ENTITY_TYPES: readonly EntityType[] = ['ministry', 'scheme', 'national'];
 
-const CONFIDENCE_LABELS: Record<Confidence, string> = {
-  high: strings.verification.confidenceHigh,
-  medium: strings.verification.confidenceMedium,
-  low: strings.verification.confidenceLow,
-};
+function confidenceLabels(strings: Strings): Record<Confidence, string> {
+  return {
+    high: strings.verification.confidenceHigh,
+    medium: strings.verification.confidenceMedium,
+    low: strings.verification.confidenceLow,
+  };
+}
 
 interface Facts {
   name: string;
@@ -98,6 +101,7 @@ async function loadFacts(
   entityType: EntityType,
   entityId: string,
   fy: FiscalYear,
+  strings: Strings,
 ): Promise<Facts | null> {
   if (entityType === 'national') {
     const national = await getNationalSummary(fy);
@@ -131,14 +135,14 @@ export async function generateMetadata({
 }: {
   params: Promise<{ entityType: string; id: string }>;
 }): Promise<Metadata> {
-  const { entityType, id } = await params;
+  const [{ entityType, id }, strings] = await Promise.all([params, getStrings()]);
   const valid = ENTITY_TYPES.find((type) => type === entityType);
   if (!valid) {
     return { title: strings.verification.title, robots: { index: false, follow: false } };
   }
   try {
     const { fy } = await resolveFy();
-    const facts = await loadFacts(valid, id, fy);
+    const facts = await loadFacts(valid, id, fy, strings);
     return {
       title: facts ? `${strings.verification.title}: ${facts.name}` : strings.verification.title,
       description: `${strings.verification.aiLabel}. ${AI_NARRATIVE_NOTICE}`,
@@ -158,14 +162,20 @@ export default async function VerifyPage({
   params: Promise<{ entityType: string; id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  const [{ entityType, id }, query] = await Promise.all([params, searchParams]);
+  const [{ entityType, id }, query, strings, locale] = await Promise.all([
+    params,
+    searchParams,
+    getStrings(),
+    getLocale(),
+  ]);
   const validType = ENTITY_TYPES.find((type) => type === entityType);
   if (!validType) notFound();
+  const confidenceLabelMap = confidenceLabels(strings);
 
   let data: PageData | null = null;
   try {
     const { fy } = await resolveFy(first(query.fy));
-    const facts = await loadFacts(validType, id, fy);
+    const facts = await loadFacts(validType, id, fy, strings);
     const scope =
       validType === 'ministry'
         ? { ministryId: id }
@@ -244,7 +254,7 @@ export default async function VerifyPage({
       />
 
       <PageHeader
-        eyebrow={`${strings.verification.title} / ${formatFiscalYearLong(data.fy)}`}
+        eyebrow={`${strings.verification.title} / ${formatFiscalYearLong(data.fy, locale)}`}
         title={facts.name}
         actions={
           facts.href ? (
@@ -268,7 +278,7 @@ export default async function VerifyPage({
             {strings.verification.factsPanel}
           </h2>
 
-          <FactsPanel facts={facts} entityId={data.entityId} />
+          <FactsPanel facts={facts} entityId={data.entityId} strings={strings} locale={locale} />
 
           <p className="mt-4 max-w-[40ch] text-[12px] leading-relaxed text-[color:var(--color-ink-faint)]">
             {strings.verification.fiscalNote}
@@ -288,9 +298,9 @@ export default async function VerifyPage({
             {AI_NARRATIVE_NOTICE}
             {report ? (
               <span className="mt-1.5 block text-[color:var(--color-ink-faint)]">
-                {strings.verification.generated}: {formatIstDate(report.generatedAt)}
+                {strings.verification.generated}: {formatIstDate(report.generatedAt, locale)}
                 <span className="mx-2">/</span>
-                {strings.verification.confidence}: {CONFIDENCE_LABELS[report.confidence]}
+                {strings.verification.confidence}: {confidenceLabelMap[report.confidence]}
               </span>
             ) : null}
           </Callout>
@@ -329,7 +339,7 @@ export default async function VerifyPage({
                           )}
                           {citation.date ? (
                             <span className="ml-2 text-[color:var(--color-ink-faint)]">
-                              {formatIstDate(citation.date)}
+                              {formatIstDate(citation.date, locale)}
                             </span>
                           ) : null}
                         </span>
@@ -367,7 +377,17 @@ export default async function VerifyPage({
 }
 
 /** The fiscal facts, shaped by which kind of entity is being verified. */
-function FactsPanel({ facts, entityId }: { facts: Facts; entityId: string }) {
+function FactsPanel({
+  facts,
+  entityId,
+  strings,
+  locale,
+}: {
+  facts: Facts;
+  entityId: string;
+  strings: Strings;
+  locale: Locale;
+}) {
   if (facts.national) {
     const national = facts.national;
     return (
@@ -396,7 +416,7 @@ function FactsPanel({ facts, entityId }: { facts: Facts; entityId: string }) {
             provenance={national.provenance.expenditure}
             note={
               national.expenditureAsOf
-                ? `${strings.freshness.asOf} ${formatIstDate(national.expenditureAsOf)}`
+                ? `${strings.freshness.asOf} ${formatIstDate(national.expenditureAsOf, locale)}`
                 : undefined
             }
           />
@@ -447,7 +467,7 @@ function FactsPanel({ facts, entityId }: { facts: Facts; entityId: string }) {
             provenance={ministry.provenance.expenditure}
             note={
               ministry.expenditureAsOf
-                ? `${strings.freshness.asOf} ${formatIstDate(ministry.expenditureAsOf)}`
+                ? `${strings.freshness.asOf} ${formatIstDate(ministry.expenditureAsOf, locale)}`
                 : undefined
             }
           />

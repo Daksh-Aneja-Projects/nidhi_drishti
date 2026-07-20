@@ -12,12 +12,14 @@ import {
   subtract,
   type Amount,
 } from '@nidhi/core';
-import { closePool, query } from './client';
+import { closePool, getPool, query, queryOne } from './client';
 import {
   getDefaultFiscalYear,
   getNationalSummary,
   getProvenanceMap,
   listMinistrySummaries,
+  listStates,
+  listStateSummaries,
 } from './queries';
 
 /**
@@ -357,5 +359,261 @@ describeDb('reference integrity', () => {
        WHERE start_date <> fy_start(fy) OR end_date <> fy_end(fy)`,
     );
     expect(rows).toEqual([]);
+  });
+
+  it('points every state alias at a state that exists', async () => {
+    const rows = await query<{ alias: string }>(
+      `SELECT alias FROM entity_alias ea
+       WHERE ea.entity_type = 'state'
+         AND NOT EXISTS (SELECT 1 FROM state s WHERE s.state_id = ea.entity_id)`,
+    );
+    expect(rows).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * States (v2, docs/12)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Runs `fn` inside a transaction that is always rolled back, so a test can
+ * insert a deliberately wrong fact, watch the invariant fire, and leave the
+ * shared database exactly as it found it. The other suites read on separate
+ * pooled connections and never see the uncommitted rows.
+ */
+async function inRollback<T>(fn: (client: import('pg').PoolClient) => Promise<T>): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    return await fn(client);
+  } finally {
+    await client.query('ROLLBACK');
+    client.release();
+  }
+}
+
+const SHA = 'a'.repeat(64);
+
+describeDb('state reference data', () => {
+  it('seeds the 28 states and 8 union territories', async () => {
+    const rows = await query<{ kind: string; count: string }>(
+      `SELECT kind, COUNT(*) AS count FROM state GROUP BY kind ORDER BY kind`,
+    );
+    const byKind = new Map(rows.map((r) => [r.kind, Number(r.count)]));
+    expect(byKind.get('state')).toBe(28);
+    expect(byKind.get('ut')).toBe(8);
+  });
+
+  it('records which union territories have no legislature of their own', async () => {
+    // Ladakh has no assembly; Delhi does. The UI leans on this to avoid implying
+    // a treasury portal that does not exist.
+    const ladakh = await queryOne<{ has_legislature: boolean }>(
+      `SELECT has_legislature FROM state WHERE state_id = 'st-ladakh'`,
+    );
+    const delhi = await queryOne<{ has_legislature: boolean }>(
+      `SELECT has_legislature FROM state WHERE state_id = 'st-delhi'`,
+    );
+    expect(ladakh?.has_legislature).toBe(false);
+    expect(delhi?.has_legislature).toBe(true);
+  });
+
+  it('exposes the two targeted states through the query layer', async () => {
+    const states = await listStates();
+    const ids = new Set(states.map((s) => s.stateId));
+    expect(ids.has('st-karnataka')).toBe(true);
+    expect(ids.has('st-odisha')).toBe(true);
+  });
+
+  it('registers the targeted portals as state-jurisdiction sources', async () => {
+    const rows = await query<{ source_id: string; jurisdiction: string }>(
+      `SELECT source_id, jurisdiction FROM source_registry
+       WHERE source_id IN ('state_karnataka', 'state_odisha') ORDER BY source_id`,
+    );
+    expect(rows.map((r) => r.source_id)).toEqual(['state_karnataka', 'state_odisha']);
+    expect(rows.every((r) => r.jurisdiction === 'state')).toBe(true);
+  });
+
+  it('leaves every existing Union source on the union ledger', async () => {
+    const rows = await query<{ source_id: string }>(
+      `SELECT source_id FROM source_registry
+       WHERE jurisdiction = 'state' AND source_id NOT LIKE 'state_%'`,
+    );
+    expect(rows).toEqual([]);
+  });
+});
+
+describeDb('state summary view', () => {
+  it('is queryable and never returns a state that reports no figure as a real balance', async () => {
+    const rows = await query<{
+      current_authority: string | null;
+      expenditure_to_date: string | null;
+      balance: string | null;
+    }>(`SELECT current_authority, expenditure_to_date, balance FROM mv_state_summary LIMIT 200`);
+    for (const row of rows) {
+      const expected: Amount = subtract(
+        parseAmountCr(row.current_authority),
+        parseAmountCr(row.expenditure_to_date),
+      );
+      const actual: Amount = parseAmountCr(row.balance);
+      if (isNotReported(expected)) expect(actual).toBe(NOT_REPORTED);
+      else expect(actual as number).toBeCloseTo(expected, 2);
+    }
+  });
+
+  it('derives a state balance as authority less expenditure, mirroring the ministry view', async () => {
+    await inRollback(async (client) => {
+      const { rows: srRows } = await client.query<{ source_record_id: string }>(
+        `INSERT INTO source_record (source_id, url, artifact_key, artifact_sha256, fetched_at)
+         VALUES ('state_karnataka', 'https://finance.karnataka.gov.in/x', 'raw/ka/x', $1, now())
+         RETURNING source_record_id`,
+        [SHA],
+      );
+      const srid = srRows[0]!.source_record_id;
+      // A state BE authority and a full-year expenditure actual for the same FY.
+      await client.query(
+        `INSERT INTO fiscal_fact
+           (fy, entity_type, entity_id, stage, head, is_cumulative, amount_inr_cr,
+            source_record_id, extraction_method)
+         VALUES ('FY2026', 'state', 'st-karnataka', 'BE', 'total', FALSE, 339000.50, $1, 'html_table')`,
+        [srid],
+      );
+      await client.query(
+        `INSERT INTO fiscal_fact
+           (fy, entity_type, entity_id, stage, head, period_start, period_end,
+            is_cumulative, amount_inr_cr, source_record_id, extraction_method)
+         VALUES ('FY2026', 'state', 'st-karnataka', 'EXPENDITURE', 'total',
+                 '2025-04-01', '2026-03-31', TRUE, 300000.00, $1, 'html_table')`,
+        [srid],
+      );
+      // Non-concurrent refresh is allowed inside a transaction and rolls back
+      // with it, so the shared view is untouched once the test ends.
+      await client.query('REFRESH MATERIALIZED VIEW mv_state_summary');
+
+      const { rows } = await client.query<{
+        current_authority: string;
+        expenditure_to_date: string;
+        balance: string;
+      }>(
+        `SELECT current_authority, expenditure_to_date, balance
+         FROM mv_state_summary WHERE fy = 'FY2026' AND state_id = 'st-karnataka'`,
+      );
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0]!.current_authority)).toBeCloseTo(339000.5, 2);
+      expect(Number(rows[0]!.expenditure_to_date)).toBeCloseTo(300000.0, 2);
+      expect(Number(rows[0]!.balance)).toBeCloseTo(39000.5, 2);
+    });
+  });
+
+  it('reads through the query layer once a state has data', async () => {
+    // Real state data is not loaded yet, so this is a smoke test of the reader,
+    // which must return an array and never throw.
+    const summaries = await listStateSummaries('FY2026');
+    expect(Array.isArray(summaries)).toBe(true);
+  });
+});
+
+describeDb('CSS double-count guard (docs/12)', () => {
+  it('flags a state-sourced fact that lands in the Union scheme ledger', async () => {
+    await inRollback(async (client) => {
+      const { rows: srRows } = await client.query<{ source_record_id: string }>(
+        `INSERT INTO source_record (source_id, url, artifact_key, artifact_sha256, fetched_at)
+         VALUES ('state_karnataka', 'https://finance.karnataka.gov.in/x', 'raw/ka/y', $1, now())
+         RETURNING source_record_id`,
+        [SHA],
+      );
+      const srid = srRows[0]!.source_record_id;
+      // The mistake the rule exists to catch: a Centrally Sponsored Scheme's
+      // state-side spending written under entity_type='scheme', where
+      // mv_scheme_summary would add it on top of the Union central share.
+      await client.query(
+        `INSERT INTO fiscal_fact
+           (fy, entity_type, entity_id, stage, head, period_end, is_cumulative,
+            amount_inr_cr, source_record_id, extraction_method)
+         VALUES ('FY2026', 'scheme', 'sch-mgnrega', 'RELEASE', 'total',
+                 '2026-03-31', FALSE, 5000.00, $1, 'html_table')`,
+        [srid],
+      );
+      const { rows } = await client.query<{ invariant: string; severity: string }>(
+        `SELECT invariant, severity FROM check_invariants('FY2026')
+         WHERE invariant = 'state_source_in_union_ledger'`,
+      );
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((r) => r.severity === 'error')).toBe(true);
+    });
+  });
+
+  it('does not flag the same scheme fact when it comes from a Union source', async () => {
+    await inRollback(async (client) => {
+      const { rows: srRows } = await client.query<{ source_record_id: string }>(
+        `INSERT INTO source_record (source_id, url, artifact_key, artifact_sha256, fetched_at)
+         VALUES ('pfms_pub', 'https://pfms.nic.in/x', 'raw/pfms/z', $1, now())
+         RETURNING source_record_id`,
+        [SHA],
+      );
+      const srid = srRows[0]!.source_record_id;
+      await client.query(
+        `INSERT INTO fiscal_fact
+           (fy, entity_type, entity_id, stage, head, period_end, is_cumulative,
+            amount_inr_cr, source_record_id, extraction_method)
+         VALUES ('FY2026', 'scheme', 'sch-mgnrega', 'RELEASE', 'total',
+                 '2026-03-31', FALSE, 5000.00, $1, 'html_table')`,
+        [srid],
+      );
+      const { rows } = await client.query<{ invariant: string }>(
+        `SELECT invariant FROM check_invariants('FY2026')
+         WHERE invariant = 'state_source_in_union_ledger'`,
+      );
+      expect(rows).toEqual([]);
+    });
+  });
+
+  it('flags a state fact that points at an unseeded state', async () => {
+    await inRollback(async (client) => {
+      const { rows: srRows } = await client.query<{ source_record_id: string }>(
+        `INSERT INTO source_record (source_id, url, artifact_key, artifact_sha256, fetched_at)
+         VALUES ('state_odisha', 'https://finance.odisha.gov.in/x', 'raw/od/w', $1, now())
+         RETURNING source_record_id`,
+        [SHA],
+      );
+      const srid = srRows[0]!.source_record_id;
+      await client.query(
+        `INSERT INTO fiscal_fact
+           (fy, entity_type, entity_id, stage, head, is_cumulative, amount_inr_cr,
+            source_record_id, extraction_method)
+         VALUES ('FY2026', 'state', 'st-atlantis', 'BE', 'total', FALSE, 1.00, $1, 'html_table')`,
+        [srid],
+      );
+      const { rows } = await client.query<{ severity: string }>(
+        `SELECT severity FROM check_invariants('FY2026')
+         WHERE invariant = 'state_fact_unknown_state'`,
+      );
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((r) => r.severity === 'error')).toBe(true);
+    });
+  });
+
+  it('stays clean for a correctly filed state fact', async () => {
+    await inRollback(async (client) => {
+      const { rows: srRows } = await client.query<{ source_record_id: string }>(
+        `INSERT INTO source_record (source_id, url, artifact_key, artifact_sha256, fetched_at)
+         VALUES ('state_karnataka', 'https://finance.karnataka.gov.in/x', 'raw/ka/ok', $1, now())
+         RETURNING source_record_id`,
+        [SHA],
+      );
+      const srid = srRows[0]!.source_record_id;
+      await client.query(
+        `INSERT INTO fiscal_fact
+           (fy, entity_type, entity_id, stage, head, is_cumulative, amount_inr_cr,
+            source_record_id, extraction_method)
+         VALUES ('FY2026', 'state', 'st-karnataka', 'BE', 'total', FALSE, 339000.50, $1, 'html_table')`,
+        [srid],
+      );
+      const { rows } = await client.query<{ invariant: string; severity: string }>(
+        `SELECT invariant, severity FROM check_invariants('FY2026')
+         WHERE severity = 'error'
+           AND invariant IN ('state_source_in_union_ledger', 'state_fact_unknown_state')`,
+      );
+      expect(rows).toEqual([]);
+    });
   });
 });

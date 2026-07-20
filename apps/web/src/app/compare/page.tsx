@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Columns3, X } from 'lucide-react';
 import {
   NOT_REPORTED,
@@ -26,9 +25,11 @@ import {
 } from '@/components/layout-primitives';
 import { Figure } from '@/components/figure';
 import { Icon } from '@/components/icon';
+import { Link } from '@/components/locale-link';
 import { CompareTracker } from '@/app/compare/compare-tracker';
+import { getStrings } from '@/lib/i18n-server';
+import type { Strings } from '@/lib/strings';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * Compare up to four ministries or schemes.
@@ -45,10 +46,13 @@ import { strings } from '@/lib/strings';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: strings.compare.title,
-  description: strings.compare.lede,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.compare.title,
+    description: strings.compare.lede,
+  };
+}
 
 const MAX_ENTITIES = 4;
 
@@ -88,57 +92,60 @@ interface MetricRow {
   cell: (entity: Loaded) => { value: Amount; provenance?: Provenance | null; percent?: boolean };
 }
 
-const ROWS: readonly MetricRow[] = [
-  {
-    label: strings.stage.authority,
-    help: strings.stage.authorityHelp,
-    cell: (entity) =>
-      entity.kind === 'ministry'
-        ? { value: entity.summary.currentAuthority, provenance: entity.summary.provenance.authority }
-        : { value: entity.summary.allocation, provenance: entity.summary.provenance.allocation },
-  },
-  {
-    label: 'Released',
-    cell: (entity) =>
-      entity.kind === 'scheme'
-        ? { value: entity.summary.released, provenance: entity.summary.provenance.released }
-        : { value: NOT_REPORTED },
-  },
-  {
-    label: strings.stage.spent,
-    help: strings.stage.spentHelp,
-    cell: (entity) =>
-      entity.kind === 'ministry'
-        ? {
-            value: entity.summary.expenditureToDate,
-            provenance: entity.summary.provenance.expenditure,
-          }
-        : { value: entity.summary.utilized, provenance: entity.summary.provenance.utilized },
-  },
-  {
-    label: strings.stage.balance,
-    help: strings.stage.balanceHelp,
-    cell: (entity) =>
-      entity.kind === 'ministry'
-        ? { value: entity.summary.balance }
-        : { value: NOT_REPORTED },
-  },
-  {
-    label: 'Share of the allocation reported spent',
-    cell: (entity) =>
-      entity.kind === 'ministry'
-        ? { value: entity.summary.burn.pctSpent, percent: true }
-        : { value: entity.summary.utilizationPct, percent: true },
-  },
-  {
-    label: strings.pace.label,
-    help: strings.pace.help,
-    cell: (entity) =>
-      entity.kind === 'ministry'
-        ? { value: entity.summary.burn.burnRatio }
-        : { value: NOT_REPORTED },
-  },
-];
+function buildRows(strings: Strings): readonly MetricRow[] {
+  return [
+    {
+      label: strings.stage.authority,
+      help: strings.stage.authorityHelp,
+      cell: (entity) =>
+        entity.kind === 'ministry'
+          ? {
+              value: entity.summary.currentAuthority,
+              provenance: entity.summary.provenance.authority,
+            }
+          : { value: entity.summary.allocation, provenance: entity.summary.provenance.allocation },
+    },
+    {
+      label: strings.compare.released,
+      cell: (entity) =>
+        entity.kind === 'scheme'
+          ? { value: entity.summary.released, provenance: entity.summary.provenance.released }
+          : { value: NOT_REPORTED },
+    },
+    {
+      label: strings.stage.spent,
+      help: strings.stage.spentHelp,
+      cell: (entity) =>
+        entity.kind === 'ministry'
+          ? {
+              value: entity.summary.expenditureToDate,
+              provenance: entity.summary.provenance.expenditure,
+            }
+          : { value: entity.summary.utilized, provenance: entity.summary.provenance.utilized },
+    },
+    {
+      label: strings.stage.balance,
+      help: strings.stage.balanceHelp,
+      cell: (entity) =>
+        entity.kind === 'ministry' ? { value: entity.summary.balance } : { value: NOT_REPORTED },
+    },
+    {
+      label: strings.compare.shareSpent,
+      cell: (entity) =>
+        entity.kind === 'ministry'
+          ? { value: entity.summary.burn.pctSpent, percent: true }
+          : { value: entity.summary.utilizationPct, percent: true },
+    },
+    {
+      label: strings.pace.label,
+      help: strings.pace.help,
+      cell: (entity) =>
+        entity.kind === 'ministry'
+          ? { value: entity.summary.burn.burnRatio }
+          : { value: NOT_REPORTED },
+    },
+  ];
+}
 
 async function loadEntities(selections: Selection[], fy: FiscalYear): Promise<Loaded[]> {
   const loaded = await Promise.all(
@@ -159,7 +166,8 @@ export default async function ComparePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
+  const [params, strings] = await Promise.all([searchParams, getStrings()]);
+  const rows = buildRows(strings);
   const { fy } = await resolveFy(params.fy);
   const selections = parseSelection(params.e);
 
@@ -244,7 +252,7 @@ export default async function ComparePage({
                     </tr>
                   </thead>
                   <tbody>
-                    {ROWS.map((row) => (
+                    {rows.map((row) => (
                       <tr key={row.label}>
                         <th scope="row" className="text-left align-top">
                           <span className="block font-medium normal-case tracking-normal text-[color:var(--color-ink)]">

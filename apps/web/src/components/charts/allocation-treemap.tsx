@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { EChartsOption } from 'echarts';
 import { Chart, baseChartOption, chartTheme } from '@/components/chart';
-import { strings } from '@/lib/strings';
+import { useLocale, useStrings } from '@/components/locale-provider';
+import { localePath } from '@/lib/i18n';
 
 /**
  * Ministries sized by spending authority, coloured by pace.
@@ -44,6 +45,8 @@ interface AllocationTreemapProps {
 }
 
 export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemapProps) {
+  const strings = useStrings();
+  const locale = useLocale();
   const router = useRouter();
 
   const byName = useMemo(
@@ -110,7 +113,7 @@ export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemap
         },
       ],
     };
-  }, [items, byName]);
+  }, [items, byName, strings]);
 
   const table = useMemo(
     () => ({
@@ -122,7 +125,7 @@ export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemap
       ],
       rows: items.map((item) => [item.name, item.authorityText, item.spentText, item.paceText]),
     }),
-    [items],
+    [items, strings],
   );
 
   return (
@@ -134,7 +137,9 @@ export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemap
       table={table}
       onSelect={(name) => {
         const match = items.find((item) => item.name === name);
-        if (match) router.push(`/ministry/${encodeURIComponent(match.id)}?fy=${fy}`);
+        if (match) {
+          router.push(localePath(`/ministry/${encodeURIComponent(match.id)}?fy=${fy}`, locale));
+        }
       }}
     />
   );

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 import { formatINRCompact, formatINRCr } from '@nidhi/core';
 import { Chart, axisLabelStyle, baseChartOption, chartTheme } from '@/components/chart';
-import { strings } from '@/lib/strings';
+import { useStrings } from '@/components/locale-provider';
 
 /**
  * De-cumulated monthly expenditure.
@@ -44,10 +44,6 @@ function provisionalDecal() {
   };
 }
 
-function amountText(value: number | null): string {
-  return value === null ? strings.common.notReported : formatINRCr(value);
-}
-
 export function MonthlySpendChart({
   chartId,
   points,
@@ -55,7 +51,10 @@ export function MonthlySpendChart({
   height = 300,
   ariaLabel,
 }: MonthlySpendChartProps) {
+  const strings = useStrings();
   const hasPrior = Boolean(priorPoints && priorPoints.some((point) => point.monthly !== null));
+  const amountText = (value: number | null): string =>
+    value === null ? strings.common.notReported : formatINRCr(value);
 
   const option = useMemo<EChartsOption>(() => {
     const categories = points.map((point) => point.label);
@@ -123,7 +122,7 @@ export function MonthlySpendChart({
         },
       ],
     };
-  }, [points, priorPoints, hasPrior]);
+  }, [points, priorPoints, hasPrior, strings]);
 
   const table = useMemo(() => {
     const columns = hasPrior
@@ -143,7 +142,7 @@ export function MonthlySpendChart({
           : [point.label, amountText(point.monthly), stage];
       }),
     };
-  }, [points, priorPoints, hasPrior]);
+  }, [points, priorPoints, hasPrior, strings, amountText]);
 
   return (
     <Chart

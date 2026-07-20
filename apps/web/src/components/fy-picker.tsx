@@ -1,9 +1,10 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { formatFiscalYearLong, type FiscalYear } from '@nidhi/core';
+import { type FiscalYear } from '@nidhi/core';
+import { useLocale, useStrings } from '@/components/locale-provider';
 import { track } from '@/lib/analytics';
-import { strings } from '@/lib/strings';
+import { formatFiscalYearLong } from '@/lib/format';
 
 /**
  * Financial-year selector.
@@ -14,6 +15,8 @@ import { strings } from '@/lib/strings';
  * an empty page.
  */
 export function FyPicker({ fy, available }: { fy: FiscalYear; available: FiscalYear[] }) {
+  const strings = useStrings();
+  const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -38,7 +41,7 @@ export function FyPicker({ fy, available }: { fy: FiscalYear; available: FiscalY
       >
         {available.map((year) => (
           <option key={year} value={year}>
-            {formatFiscalYearLong(year)}
+            {formatFiscalYearLong(year, locale)}
           </option>
         ))}
       </select>

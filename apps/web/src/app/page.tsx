@@ -1,12 +1,10 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { AlertTriangle, ArrowRight, BarChart3, Landmark, Scale } from 'lucide-react';
 import {
   ANOMALY_RULES,
   BURN_BAND_LABELS,
   burnBand,
   burnColor,
-  formatFiscalYearLong,
   formatINRCr,
   formatPercent,
   isNotReported,
@@ -27,6 +25,7 @@ import { MonthlySpendChart, type MonthlyBar } from '@/components/charts/monthly-
 import { Figure } from '@/components/figure';
 import { HeroPace } from '@/components/hero-pace';
 import { Icon } from '@/components/icon';
+import { Link } from '@/components/locale-link';
 import {
   Callout,
   Chip,
@@ -36,9 +35,9 @@ import {
   TableScroll,
 } from '@/components/layout-primitives';
 import { PaceLegend } from '@/components/pace-track';
-import { formatIstDate } from '@/lib/format';
+import { formatFiscalYearLong, formatIstDate } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * P1, the national overview.
@@ -50,10 +49,13 @@ import { strings } from '@/lib/strings';
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: strings.nav.overview,
-  description: strings.site.description,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.nav.overview,
+    description: strings.site.description,
+  };
+}
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -65,7 +67,7 @@ export default async function OverviewPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
+  const [params, strings, locale] = await Promise.all([searchParams, getStrings(), getLocale()]);
 
   let fy: string;
   let national: Awaited<ReturnType<typeof getNationalSummary>> = null;
@@ -142,7 +144,7 @@ export default async function OverviewPage({
       <PageShell>
         <header className="mb-7 border-b-2 border-[color:var(--color-rule-strong)] pb-5">
           <p className="eyebrow mb-1.5">
-            {strings.overview.heroEyebrow} · {formatFiscalYearLong(fy)}
+            {strings.overview.heroEyebrow} · {formatFiscalYearLong(fy, locale)}
           </p>
           <h1 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] leading-[1.1]">
             {strings.overview.heroTitle}
@@ -232,7 +234,7 @@ export default async function OverviewPage({
             <MonthlySpendChart
               chartId="overview_monthly_spend"
               points={monthlyBars}
-              ariaLabel={`${strings.overview.monthlyTitle}, ${formatFiscalYearLong(fy)}`}
+              ariaLabel={`${strings.overview.monthlyTitle}, ${formatFiscalYearLong(fy, locale)}`}
             />
           ) : (
             <EmptyState
@@ -264,7 +266,7 @@ export default async function OverviewPage({
         </Section>
 
         <p className="mt-10 text-[13px] text-[color:var(--color-ink-faint)]">
-          {strings.freshness.asOf} {formatIstDate(national.expenditureAsOf)}.{' '}
+          {strings.freshness.asOf} {formatIstDate(national.expenditureAsOf, locale)}.{' '}
           {strings.overview.asOfHelp}
         </p>
       </PageShell>
@@ -341,7 +343,8 @@ function buildMovers(ministries: readonly MinistrySummary[]): {
   return { revision: withRevision, behind, ahead };
 }
 
-function MoverTable({ title, rows, fy }: { title: string; rows: MoverRow[]; fy: string }) {
+async function MoverTable({ title, rows, fy }: { title: string; rows: MoverRow[]; fy: string }) {
+  const strings = await getStrings();
   return (
     <div>
       <p className="eyebrow mb-2">{title}</p>
@@ -385,7 +388,8 @@ function MoverTable({ title, rows, fy }: { title: string; rows: MoverRow[]; fy: 
  * Signals
  * ------------------------------------------------------------------ */
 
-function FlagCard({ flag, fy }: { flag: AnomalyFlag; fy: string }) {
+async function FlagCard({ flag, fy }: { flag: AnomalyFlag; fy: string }) {
+  const strings = await getStrings();
   const rule = ANOMALY_RULES[flag.ruleId];
   const href =
     flag.entityType === 'scheme'

@@ -7,7 +7,7 @@ import {
   type Amount,
   type BurnMetrics,
 } from '@nidhi/core';
-import { strings } from '@/lib/strings';
+import { getStrings } from '@/lib/i18n-server';
 
 /**
  * The pace track: the product's signature element.
@@ -48,13 +48,14 @@ function toTrackPosition(percent: number): number {
   return Math.max(0, Math.min(100, percent));
 }
 
-export function PaceTrack({
+export async function PaceTrack({
   burn,
   size = 'default',
   showReadout = true,
   animate = true,
   label,
 }: PaceTrackProps) {
+  const strings = await getStrings();
   const { height, markerHeight, className } = SIZES[size];
   const isChip = size === 'chip';
 
@@ -163,13 +164,14 @@ export function PaceChip({ burn, label }: { burn: BurnMetrics; label?: string })
 }
 
 /** Legend for the pace axis, shown once per page that colours by pace. */
-export function PaceLegend({ className = '' }: { className?: string }) {
+export async function PaceLegend({ className = '' }: { className?: string }) {
+  const strings = await getStrings();
   const stops: Array<{ ratio: Amount; label: string }> = [
-    { ratio: 0.3, label: 'Far behind' },
-    { ratio: 0.7, label: 'Behind' },
-    { ratio: 1.0, label: 'In step' },
-    { ratio: 1.25, label: 'Ahead' },
-    { ratio: 1.7, label: 'Far ahead' },
+    { ratio: 0.3, label: strings.pace.legendFarBehind },
+    { ratio: 0.7, label: strings.pace.legendBehind },
+    { ratio: 1.0, label: strings.pace.legendInStep },
+    { ratio: 1.25, label: strings.pace.legendAhead },
+    { ratio: 1.7, label: strings.pace.legendFarAhead },
   ];
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${className}`}>

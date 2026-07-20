@@ -13,7 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-EntityType = Literal["ministry", "scheme", "national"]
+EntityType = Literal["ministry", "scheme", "national", "state", "state_department"]
 Stage = Literal["BE", "RE", "SUPPLEMENTARY", "SANCTION", "RELEASE", "EXPENDITURE", "UTILIZATION"]
 Head = Literal["revenue", "capital", "total"]
 ExtractionMethod = Literal[

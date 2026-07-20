@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { PageHeader, PageShell, Section, TableScroll, Callout } from '@/components/layout-primitives';
-import { strings } from '@/lib/strings';
+import { getStrings } from '@/lib/i18n-server';
 import { siteUrl } from '@/lib/site';
 
 /**
@@ -11,10 +11,13 @@ import { siteUrl } from '@/lib/site';
  * against strings that look like version references, which every path here is.
  */
 
-export const metadata: Metadata = {
-  title: strings.apiDocs.title,
-  description: strings.apiDocs.lede,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const strings = await getStrings();
+  return {
+    title: strings.apiDocs.title,
+    description: strings.apiDocs.lede,
+  };
+}
 
 interface Endpoint {
   path: string;
@@ -105,7 +108,8 @@ function Code({ children }: { children: string }) {
   );
 }
 
-export default function ApiDocsPage() {
+export default async function ApiDocsPage() {
+  const strings = await getStrings();
   return (
     <PageShell>
       <PageHeader

@@ -33,6 +33,24 @@ export const strings = {
     searchPlaceholder: 'Search a ministry or scheme',
   },
 
+  // Language switcher. Each option is labelled with its own endonym in both
+  // locales (English stays "English", Hindi stays "हिंदी"), which is how a
+  // reader recognises their own language in a switcher.
+  language: {
+    label: 'Language',
+    english: 'English',
+    hindi: 'हिंदी',
+  },
+
+  // Assistive-technology labels. User facing to a screen reader, so localised
+  // like everything else rather than left as bare English in the markup.
+  a11y: {
+    skipToContent: 'Skip to content',
+    primaryNav: 'Primary',
+    secondaryNav: 'Secondary',
+    close: 'Close',
+  },
+
   stage: {
     authority: 'Spending authority',
     authorityHelp:
@@ -54,6 +72,11 @@ export const strings = {
     help:
       'The pace track compares the share of the allocation spent against the share of the year that had elapsed on the date the expenditure figure covers.',
     unavailable: 'Pace cannot be computed from the reported figures.',
+    legendFarBehind: 'Far behind',
+    legendBehind: 'Behind',
+    legendInStep: 'In step',
+    legendAhead: 'Ahead',
+    legendFarAhead: 'Far ahead',
   },
 
   provenance: {
@@ -548,6 +571,8 @@ export const strings = {
     empty: 'Nothing is selected yet.',
     emptyBody: 'Choose a ministry or a scheme from the lists to start a comparison.',
     metric: 'Measure',
+    released: 'Released',
+    shareSpent: 'Share of the allocation reported spent',
     mixedNote:
       'Ministries and schemes report different stages, so a measure that one side does not publish shows as not reported.',
   },
@@ -650,4 +675,17 @@ export const strings = {
   },
 } as const;
 
-export type Strings = typeof strings;
+/**
+ * Widen the literal types produced by `as const` to their base types, so a
+ * second dictionary (strings.hi.ts) can be typed against the same shape without
+ * every Hindi value having to equal the exact English string. Structure and
+ * keys are still enforced, so a missing or misspelled key fails the build, but
+ * the leaf values are plain strings. Arrays stay readonly to match `as const`.
+ */
+type Widen<T> = T extends string
+  ? string
+  : T extends readonly (infer U)[]
+    ? readonly Widen<U>[]
+    : { [K in keyof T]: Widen<T[K]> };
+
+export type Strings = Widen<typeof strings>;

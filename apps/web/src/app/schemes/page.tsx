@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { Layers } from 'lucide-react';
 import {
-  formatFiscalYearLong,
   formatPercent,
   isNotReported,
   type FiscalYear,
@@ -14,8 +12,11 @@ import { listMinistrySummaries, listSchemeSummaries } from '@nidhi/db';
 import { Figure } from '@/components/figure';
 import { FilterBar, type FilterSpec } from '@/components/flag-filters';
 import { EmptyState, PageHeader, PageShell, Section, TableScroll } from '@/components/layout-primitives';
+import { Link } from '@/components/locale-link';
+import { formatFiscalYearLong } from '@/lib/format';
+import { getLocale, getStrings } from '@/lib/i18n-server';
+import type { Strings } from '@/lib/strings';
 import { resolveFy } from '@/lib/site';
-import { strings } from '@/lib/strings';
 
 /**
  * The scheme index.
@@ -37,31 +38,35 @@ function first(value: string | string[] | undefined): string {
 
 const SCHEME_TYPES: readonly SchemeType[] = ['CSS', 'CS', 'other'];
 
-const SCHEME_TYPE_LABELS: Record<SchemeType, string> = {
-  CSS: strings.schemes.typeCss,
-  CS: strings.schemes.typeCs,
-  other: strings.schemes.typeOther,
-};
-
 const SORTS = ['allocation', 'utilization_asc', 'name'] as const;
 type SchemeSort = (typeof SORTS)[number];
 
-const SORT_LABELS: Record<SchemeSort, string> = {
-  allocation: strings.schemes.sortAllocation,
-  utilization_asc: strings.schemes.sortUtilisation,
-  name: strings.schemes.sortName,
-};
+function schemeTypeLabels(strings: Strings): Record<SchemeType, string> {
+  return {
+    CSS: strings.schemes.typeCss,
+    CS: strings.schemes.typeCs,
+    other: strings.schemes.typeOther,
+  };
+}
+
+function sortLabels(strings: Strings): Record<SchemeSort, string> {
+  return {
+    allocation: strings.schemes.sortAllocation,
+    utilization_asc: strings.schemes.sortUtilisation,
+    name: strings.schemes.sortName,
+  };
+}
 
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
-  const params = await searchParams;
+  const [params, strings, locale] = await Promise.all([searchParams, getStrings(), getLocale()]);
   let fyLabel = '';
   try {
     const { fy } = await resolveFy(first(params.fy));
-    fyLabel = ` ${formatFiscalYearLong(fy)}`;
+    fyLabel = ` ${formatFiscalYearLong(fy, locale)}`;
   } catch {
     fyLabel = '';
   }
@@ -82,7 +87,9 @@ export default async function SchemesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
+  const [params, strings, locale] = await Promise.all([searchParams, getStrings(), getLocale()]);
+  const schemeTypeLabelMap = schemeTypeLabels(strings);
+  const sortLabelMap = sortLabels(strings);
   const ministryId = first(params.ministry);
   const rawType = first(params.type);
   const schemeType = SCHEME_TYPES.find((type) => type === rawType);
@@ -139,21 +146,21 @@ export default async function SchemesPage({
       value: schemeType ?? '',
       options: [
         { value: '', label: strings.schemes.allTypes },
-        ...SCHEME_TYPES.map((type) => ({ value: type, label: SCHEME_TYPE_LABELS[type] })),
+        ...SCHEME_TYPES.map((type) => ({ value: type, label: schemeTypeLabelMap[type] })),
       ],
     },
     {
       name: 'sort',
       label: strings.schemes.sort,
       value: sort,
-      options: SORTS.map((value) => ({ value, label: SORT_LABELS[value] })),
+      options: SORTS.map((value) => ({ value, label: sortLabelMap[value] })),
     },
   ];
 
   return (
     <PageShell>
       <PageHeader
-        eyebrow={formatFiscalYearLong(data.fy)}
+        eyebrow={formatFiscalYearLong(data.fy, locale)}
         title={strings.schemes.title}
         lede={strings.schemes.intro}
       />
@@ -215,7 +222,7 @@ export default async function SchemesPage({
                     </td>
                     <td className="text-[13px] text-[color:var(--color-ink-soft)]">
                       {scheme.schemeType
-                        ? SCHEME_TYPE_LABELS[scheme.schemeType]
+                        ? schemeTypeLabelMap[scheme.schemeType]
                         : strings.common.notStated}
                     </td>
                     <td className="num">

@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { strings } from '@/lib/strings';
+import { useStrings } from '@/components/locale-provider';
 
 /**
  * Query-string filter bar.
@@ -29,6 +29,7 @@ export interface FilterSpec {
 }
 
 export function FilterBar({ filters }: { filters: FilterSpec[] }) {
+  const strings = useStrings();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

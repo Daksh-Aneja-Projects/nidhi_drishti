@@ -8,7 +8,7 @@ import {
   type Provenance,
 } from '@nidhi/core';
 import { ProvenancePopover } from '@/components/provenance';
-import { strings } from '@/lib/strings';
+import { getStrings } from '@/lib/i18n-server';
 
 /**
  * A rupee figure with its provenance attached.
@@ -52,7 +52,7 @@ function formatValue(value: Amount, unit: FigureProps['unit'], signed: boolean):
   return formatINRCr(value, options);
 }
 
-export function Figure({
+export async function Figure({
   value,
   unit = 'crore',
   scale = 'body',
@@ -63,6 +63,7 @@ export function Figure({
   signed = false,
   className = '',
 }: FigureProps) {
+  const strings = await getStrings();
   const unreported = isNotReported(value);
   const text = formatValue(value, unit, signed);
 

@@ -257,8 +257,24 @@ class AgentClient:
     @property
     def transport(self) -> MessageTransport:
         if self._transport is None:
-            self._transport = AnthropicTransport(self.settings.anthropic_api_key)
+            self._transport = self._build_transport()
         return self._transport
+
+    def _build_transport(self) -> MessageTransport:
+        """Pick the transport for the configured provider (docs/05, config).
+
+        The default is the local Ollama provider, so an agent run needs no API
+        key and no network beyond localhost. ``anthropic`` is selected explicitly
+        for a hosted deployment or for the live web-search verification step.
+        """
+        if self.settings.provider == "ollama":
+            from agents.lib.ollama import OllamaTransport
+
+            return OllamaTransport(
+                base_url=self.settings.ollama_base_url,
+                num_ctx=self.settings.ollama_num_ctx,
+            )
+        return AnthropicTransport(self.settings.anthropic_api_key)
 
     # -- core ---------------------------------------------------------------
 

@@ -64,6 +64,34 @@ def _env_int(name: str, default: int) -> int:
         raise ConfigError(f"{name} must be an integer, got {raw!r}") from exc
 
 
+#: Providers the agent layer can talk to. ``ollama`` runs a local Llama model
+#: with no API key and no data leaving the machine, and is the default so a
+#: public deployment needs nothing bought or configured to generate. ``anthropic``
+#: remains available for a hosted deployment or for the live web-search step,
+#: which has no local equivalent.
+AGENT_PROVIDERS: tuple[str, ...] = ("ollama", "anthropic")
+
+DEFAULT_PROVIDER = "ollama"
+
+#: Model defaults per provider. The Anthropic tier names are the hosted models;
+#: the Ollama tier names are local Llama tags. A single ``llama3.1:8b`` covers
+#: all three tiers out of the box so one `ollama pull` is enough to run; a
+#: deployment with the VRAM to spare can point the narrative tier at a larger
+#: tag (e.g. ``llama3.1:70b``) in .env without touching code.
+_MODEL_DEFAULTS: dict[str, dict[str, str]] = {
+    "ollama": {
+        "fast": "llama3.1:8b",
+        "standard": "llama3.1:8b",
+        "narrative": "llama3.1:8b",
+    },
+    "anthropic": {
+        "fast": "claude-haiku-4-5",
+        "standard": "claude-sonnet-5",
+        "narrative": "claude-opus-4-8",
+    },
+}
+
+
 @dataclass(frozen=True, slots=True)
 class AgentSettings:
     """Agent-layer configuration, mirroring the ``# Agents`` block of .env.example."""
@@ -77,6 +105,9 @@ class AgentSettings:
     max_output_tokens: int
     state_dir: Path
     base: Settings
+    provider: str = DEFAULT_PROVIDER
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_num_ctx: int = 8192
 
     @property
     def database_url(self) -> str:
@@ -116,18 +147,31 @@ def load_agent_settings(*, env_file: str | os.PathLike[str] | None = None) -> Ag
         if raw_allowlist
         else DEFAULT_WEB_SEARCH_ALLOWLIST
     )
+    provider = _env("AGENT_PROVIDER", DEFAULT_PROVIDER).lower()
+    if provider not in AGENT_PROVIDERS:
+        raise ConfigError(
+            f"AGENT_PROVIDER must be one of {AGENT_PROVIDERS}, got {provider!r}."
+        )
+    # Model defaults follow the provider, so switching AGENT_PROVIDER=ollama does
+    # not also require overriding three model names. An explicit AGENT_MODEL_*
+    # still wins, which is how a deployment points a tier at a bigger local tag.
+    tiers = _MODEL_DEFAULTS[provider]
     return AgentSettings(
         anthropic_api_key=_env("ANTHROPIC_API_KEY"),
-        model_fast=_env("AGENT_MODEL_FAST", "claude-haiku-4-5"),
-        model_standard=_env("AGENT_MODEL_STANDARD", "claude-sonnet-5"),
-        model_narrative=_env("AGENT_MODEL_NARRATIVE", "claude-opus-4-8"),
+        model_fast=_env("AGENT_MODEL_FAST", tiers["fast"]),
+        model_standard=_env("AGENT_MODEL_STANDARD", tiers["standard"]),
+        model_narrative=_env("AGENT_MODEL_NARRATIVE", tiers["narrative"]),
         # Off by default. docs/05 A4 step 3 makes live search optional, and an
         # accidental default-on would let a narrative cite a page nobody vetted.
+        # The ollama provider has no web search at all and rejects the tool.
         enable_web_search=_env_bool("AGENT_ENABLE_WEB_SEARCH", False),
         web_search_allowlist=allowlist,
         max_output_tokens=_env_int("AGENT_MAX_OUTPUT_TOKENS", 8000),
         state_dir=Path(_env("AGENT_STATE_DIR", str(REPO_ROOT / ".agent-state"))),
         base=base,
+        provider=provider,
+        ollama_base_url=_env("AGENT_OLLAMA_BASE_URL", "http://localhost:11434"),
+        ollama_num_ctx=_env_int("AGENT_OLLAMA_NUM_CTX", 8192),
     )
 
 

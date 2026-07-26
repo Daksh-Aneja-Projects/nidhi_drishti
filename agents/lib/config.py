@@ -149,9 +149,7 @@ def load_agent_settings(*, env_file: str | os.PathLike[str] | None = None) -> Ag
     )
     provider = _env("AGENT_PROVIDER", DEFAULT_PROVIDER).lower()
     if provider not in AGENT_PROVIDERS:
-        raise ConfigError(
-            f"AGENT_PROVIDER must be one of {AGENT_PROVIDERS}, got {provider!r}."
-        )
+        raise ConfigError(f"AGENT_PROVIDER must be one of {AGENT_PROVIDERS}, got {provider!r}.")
     # Model defaults follow the provider, so switching AGENT_PROVIDER=ollama does
     # not also require overriding three model names. An explicit AGENT_MODEL_*
     # still wins, which is how a deployment points a tier at a bigger local tag.

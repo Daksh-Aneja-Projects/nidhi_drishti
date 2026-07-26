@@ -119,9 +119,7 @@ class TestKarnataka:
 
     def test_reads_the_unit_from_the_caption_not_a_guess(self) -> None:
         rows, _, _ = parse_budget_glance(fixture("state_karnataka_budget_glance.html"))
-        be_total = next(
-            row for row in rows if row["stage"] == "BE" and row["head"] == "total"
-        )
+        be_total = next(row for row in rows if row["stage"] == "BE" and row["head"] == "total")
         assert be_total["amount_inr_cr"] == Decimal("339000.50")
         assert be_total["fy"] == "FY2026"
 
@@ -142,9 +140,7 @@ class TestKarnataka:
         assert not any("deficit" in label for label in labels)
 
     def test_without_a_stated_unit_every_cell_becomes_a_parse_error(self) -> None:
-        rows, errors, _ = parse_budget_glance(
-            fixture("state_karnataka_budget_glance_no_unit.html")
-        )
+        rows, errors, _ = parse_budget_glance(fixture("state_karnataka_budget_glance_no_unit.html"))
         assert rows == []
         # Two expenditure rows across two year columns, all ambiguous.
         assert len(errors) == 4
@@ -197,7 +193,9 @@ class TestKarnataka:
     ) -> None:
         from pipelines.sources.state_karnataka.pipeline import URLS, run
 
-        client = make_client(settings, serve("state_karnataka_budget_glance.html"), RecordingSleeper())
+        client = make_client(
+            settings, serve("state_karnataka_budget_glance.html"), RecordingSleeper()
+        )
         outcome = run(client=client, dry_run=True, url=URLS["budget_at_a_glance"])
         assert outcome.source_id == "state_karnataka"
         assert outcome.rows_parsed == 9
@@ -258,9 +256,7 @@ class TestOdisha:
 
     def test_the_budget_estimate_total_is_read(self) -> None:
         rows, _, _ = parse_odisha_glance(fixture("state_odisha_budget_glance.html"))
-        be_total = next(
-            row for row in rows if row["stage"] == "BE" and row["head"] == "total"
-        )
+        be_total = next(row for row in rows if row["stage"] == "BE" and row["head"] == "total")
         assert be_total["amount_inr_cr"] == Decimal("205000.00")
         assert be_total["fy"] == "FY2026"
 

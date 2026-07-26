@@ -146,7 +146,9 @@ def test_create_raises_a_clear_error_when_the_server_is_down(
     transport = OllamaTransport()
 
     with pytest.raises(OllamaError, match="Could not reach the Ollama server"):
-        transport.create(model="llama3.1:8b", system="s", messages=[{"role": "user", "content": "u"}])
+        transport.create(
+            model="llama3.1:8b", system="s", messages=[{"role": "user", "content": "u"}]
+        )
 
 
 def test_create_rejects_web_search_tools() -> None:

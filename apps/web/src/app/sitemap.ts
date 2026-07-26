@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { listMinistrySummaries, listSchemeSummaries } from '@nidhi/db';
+import { listMinistrySummaries, listSchemeSummaries, listStates } from '@nidhi/db';
 import { resolveFy, siteUrl } from '@/lib/site';
 
 /**
@@ -16,6 +16,7 @@ const STATIC_PATHS = [
   '/',
   '/ministries',
   '/schemes',
+  '/states',
   '/flags',
   '/compare',
   '/methodology',
@@ -55,9 +56,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const { fy } = await resolveFy();
-    const [ministries, schemes] = await Promise.all([
+    const [ministries, schemes, states] = await Promise.all([
       listMinistrySummaries(fy, { limit: 500 }),
       listSchemeSummaries(fy, { limit: 300 }),
+      listStates(),
     ]);
     for (const ministry of ministries) {
       entries.push({
@@ -70,6 +72,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const scheme of schemes) {
       entries.push({
         url: `${siteUrl}/scheme/${encodeURIComponent(scheme.schemeId)}`,
+        lastModified,
+        changeFrequency: 'weekly',
+        priority: 0.6,
+      });
+    }
+    // Every state page exists, ingested or not: an empty state page states
+    // plainly what is missing, which is itself part of the public record. The
+    // embed routes are deliberately absent; they are noindex fragments.
+    for (const state of states) {
+      entries.push({
+        url: `${siteUrl}/state/${encodeURIComponent(state.stateId)}`,
         lastModified,
         changeFrequency: 'weekly',
         priority: 0.6,

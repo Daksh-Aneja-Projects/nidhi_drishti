@@ -36,43 +36,51 @@ export default async function SchemeOpengraphImage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const { fy } = await resolveFy();
-  const [scheme, dataMode] = await Promise.all([getSchemeSummary(fy, id), getDataMode()]);
+  // Tolerates the database being unreachable, exactly as loadChrome does: a
+  // build in CI has no database, and a production blip should still unfurl a
+  // card that says the figures are unavailable rather than fail the request.
+  const dataMode = await getDataMode().catch(() => 'demo' as const);
 
-  if (!scheme) {
-    return renderShareCard({
-      eyebrow: strings.site.name,
-      title: strings.scheme.notFoundTitle,
-      authority: NOT_REPORTED,
-      spent: NOT_REPORTED,
-      balance: NOT_REPORTED,
-      burn: { pctSpent: NOT_REPORTED, pctFyElapsed: 0, burnRatio: NOT_REPORTED },
-      asOf: null,
-      dataMode,
-      labels: SCHEME_LABELS,
-      paceCaption: schemePaceCaption,
-      bandLabel: null,
-      showReferenceMarker: false,
-    });
+  try {
+    const { id } = await params;
+    const { fy } = await resolveFy();
+    const scheme = await getSchemeSummary(fy, id);
+    if (scheme) {
+      // Share of the allocation released. Deliberately not called a burn ratio:
+      // there is no calendar comparison here, so the marker is placed at 100 and
+      // the readout states plainly what is being compared.
+      const releasedPct = percentOf(scheme.released, scheme.allocation);
+
+      return renderShareCard({
+        eyebrow: `${scheme.ministryName ?? strings.common.scheme} · ${formatFiscalYearLong(fy)}`,
+        title: scheme.name,
+        authority: scheme.allocation,
+        spent: scheme.released,
+        balance: subtract(scheme.allocation, scheme.released),
+        burn: {
+          pctSpent: releasedPct,
+          pctFyElapsed: 100,
+          burnRatio: releasedPct === NOT_REPORTED ? NOT_REPORTED : (releasedPct as number) / 100,
+        },
+        asOf: null,
+        dataMode,
+        labels: SCHEME_LABELS,
+        paceCaption: schemePaceCaption,
+        bandLabel: null,
+        showReferenceMarker: false,
+      });
+    }
+  } catch (error) {
+    console.error('[og] scheme card could not load figures', error);
   }
 
-  // Share of the allocation released. Deliberately not called a burn ratio:
-  // there is no calendar comparison here, so the marker is placed at 100 and
-  // the readout states plainly what is being compared.
-  const releasedPct = percentOf(scheme.released, scheme.allocation);
-
   return renderShareCard({
-    eyebrow: `${scheme.ministryName ?? strings.common.scheme} · ${formatFiscalYearLong(fy)}`,
-    title: scheme.name,
-    authority: scheme.allocation,
-    spent: scheme.released,
-    balance: subtract(scheme.allocation, scheme.released),
-    burn: {
-      pctSpent: releasedPct,
-      pctFyElapsed: 100,
-      burnRatio: releasedPct === NOT_REPORTED ? NOT_REPORTED : (releasedPct as number) / 100,
-    },
+    eyebrow: strings.site.name,
+    title: strings.scheme.notFoundTitle,
+    authority: NOT_REPORTED,
+    spent: NOT_REPORTED,
+    balance: NOT_REPORTED,
+    burn: { pctSpent: NOT_REPORTED, pctFyElapsed: 0, burnRatio: NOT_REPORTED },
     asOf: null,
     dataMode,
     labels: SCHEME_LABELS,

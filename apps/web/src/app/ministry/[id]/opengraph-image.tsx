@@ -29,33 +29,41 @@ export default async function MinistryOpengraphImage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const { fy } = await resolveFy();
-  const [ministry, dataMode] = await Promise.all([getMinistrySummary(fy, id), getDataMode()]);
+  // Tolerates the database being unreachable, exactly as loadChrome does: a
+  // build in CI has no database, and a production blip should still unfurl a
+  // card that says the figures are unavailable rather than fail the request.
+  const dataMode = await getDataMode().catch(() => 'demo' as const);
 
-  if (!ministry) {
-    return renderShareCard({
-      eyebrow: strings.site.name,
-      title: strings.ministries.emptyTitle,
-      authority: NOT_REPORTED,
-      spent: NOT_REPORTED,
-      balance: NOT_REPORTED,
-      burn: { pctSpent: NOT_REPORTED, pctFyElapsed: 0, burnRatio: NOT_REPORTED },
-      asOf: null,
-      dataMode,
-      labels: FISCAL_LABELS,
-      paceCaption: fiscalPaceCaption,
-    });
+  try {
+    const { id } = await params;
+    const { fy } = await resolveFy();
+    const ministry = await getMinistrySummary(fy, id);
+    if (ministry) {
+      return renderShareCard({
+        eyebrow: `${ministry.sector ?? 'Union budget'} · ${formatFiscalYearLong(fy)}`,
+        title: ministry.name,
+        authority: ministry.currentAuthority,
+        spent: ministry.expenditureToDate,
+        balance: ministry.balance,
+        burn: ministry.burn,
+        asOf: formatCardDate(ministry.expenditureAsOf),
+        dataMode,
+        labels: FISCAL_LABELS,
+        paceCaption: fiscalPaceCaption,
+      });
+    }
+  } catch (error) {
+    console.error('[og] ministry card could not load figures', error);
   }
 
   return renderShareCard({
-    eyebrow: `${ministry.sector ?? 'Union budget'} · ${formatFiscalYearLong(fy)}`,
-    title: ministry.name,
-    authority: ministry.currentAuthority,
-    spent: ministry.expenditureToDate,
-    balance: ministry.balance,
-    burn: ministry.burn,
-    asOf: formatCardDate(ministry.expenditureAsOf),
+    eyebrow: strings.site.name,
+    title: strings.ministries.emptyTitle,
+    authority: NOT_REPORTED,
+    spent: NOT_REPORTED,
+    balance: NOT_REPORTED,
+    burn: { pctSpent: NOT_REPORTED, pctFyElapsed: 0, burnRatio: NOT_REPORTED },
+    asOf: null,
     dataMode,
     labels: FISCAL_LABELS,
     paceCaption: fiscalPaceCaption,

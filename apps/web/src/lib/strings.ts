@@ -24,6 +24,7 @@ export const strings = {
     overview: 'Overview',
     ministries: 'Ministries',
     schemes: 'Schemes',
+    states: 'States',
     flags: 'Signals',
     compare: 'Compare',
     methodology: 'Methodology',
@@ -315,6 +316,81 @@ export const strings = {
     unavailableBody:
       'The scheme list is not reachable at the moment. Nothing is estimated in its place. Try again shortly.',
     resultCount: 'schemes listed',
+  },
+
+  states: {
+    title: 'States',
+    lede:
+      'Every state and union territory, with the budget each presents for itself: the spending authority, the expenditure it reports, and the pace against the calendar.',
+    coverage:
+      'State ingestion is beginning with Karnataka and Odisha. Every other state is listed with its figures shown as not reported until its budget documents are ingested.',
+    counted: 'states and union territories listed',
+    colName: 'State or union territory',
+    colKind: 'Kind',
+    colRegion: 'Region',
+    colAuthority: 'Spending authority',
+    colSpent: 'Expenditure',
+    colBalance: 'Balance',
+    colPace: 'Pace',
+    kindState: 'State',
+    kindUt: 'Union territory',
+    viaUnion: 'Spends through the union budget',
+    emptyTitle: 'No states are on record',
+    emptyBody: 'The reference list of states could not be read. Try again shortly.',
+    notFoundTitle: 'That state is not in our records',
+    notFoundBody:
+      'Check the address, or start from the list of states and union territories.',
+  },
+
+  state: {
+    backToList: 'All states and union territories',
+    ledgerTitle: 'A separate ledger',
+    coverageNote:
+      'These are the state aggregate figures read from the budget documents the state publishes. Department and scheme level spending within the state is not yet ingested.',
+    annualNote:
+      'States publish expenditure annually, often provisionally at first, and audited accounts arrive one to two years after the year closes. There is no monthly account for a state the way there is for the union.',
+    waterfallTitle: 'From allocation to balance',
+    waterfallHelp:
+      'Each step is a different stage of the same rupee. Authority is permission to spend. Expenditure is money the state accounts as spent.',
+    monthlyTitle: 'Monthly expenditure',
+    monthlyHelp:
+      'De-cumulated from cumulative accounts where the state publishes them. Hatched months are provisional.',
+    splitTitle: 'Revenue and capital',
+    splitHelp:
+      'Revenue spending covers running costs. Capital spending creates assets. The split is reported on the expenditure side.',
+    splitEmpty: 'The revenue and capital split is not reported for this state.',
+    yoyTitle: 'Allocation over five years',
+    yoyHelp:
+      'Budget estimate, revised estimate and expenditure for the five most recent financial years on record.',
+    yoyEmpty: 'Fewer than two years of figures are on record for this state.',
+    emptyTitle: 'No figures on record for this state',
+    emptyBody:
+      'Budget documents for this state have not been ingested yet. State ingestion is beginning with Karnataka and Odisha, and every figure will carry its source when it arrives.',
+    utNoBudgetTitle: 'No separate budget to show',
+    utNoBudgetBody:
+      'This union territory has no legislative assembly, so it presents no budget of its own. Its spending runs through the union budget.',
+    sourcesTitle: 'Records behind the figures on this page',
+    sourcesHelp:
+      'Each figure on this page traces to one of these records. Open a figure to reach the document directly.',
+    sourcesEmpty: 'No source records are attached to the figures on this page.',
+    embedTitle: 'Embed this record',
+    embedHelp:
+      'A compact card with these figures, their source and their date, for use in an article.',
+  },
+
+  embed: {
+    copy: 'Copy the embed code',
+    copied: 'Copied',
+    openFull: 'Open the full record',
+    unavailableTitle: 'This record is not available',
+    unavailableBody:
+      'The record behind this card could not be found. It may sit under a different identifier or year.',
+    demoNotice: 'Illustrative sample data. Not government figures.',
+    stateLedgerLine:
+      'State totals include central transfers. They are never added to union figures.',
+    releasedShare: 'of the allocation released',
+    releasesNotExpenditure: 'Releases are not expenditure.',
+    attribution: 'Compiled from cited public sources.',
   },
 
   filters: {

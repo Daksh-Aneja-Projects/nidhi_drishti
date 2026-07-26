@@ -27,6 +27,7 @@ export async function SiteHeader({
     { href: '/', label: strings.nav.overview },
     { href: '/ministries', label: strings.nav.ministries },
     { href: '/schemes', label: strings.nav.schemes },
+    { href: '/states', label: strings.nav.states },
     { href: '/flags', label: strings.nav.flags },
     { href: '/compare', label: strings.nav.compare },
   ];

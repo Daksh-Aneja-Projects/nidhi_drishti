@@ -67,15 +67,32 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const [locale, strings, canonicalPath] = await Promise.all([
+    getLocale(),
+    getStrings(),
+    getCanonicalPath(),
+  ]);
+
+  // The embed routes are iframed into other people's articles, so they render
+  // with no site chrome at all: no header, no search, no freshness bar, no
+  // footer. The card under /embed carries its own attribution and, when the
+  // deployment serves illustrative figures, its own demo notice, because an
+  // embed is a detached surface and cannot rely on a banner it does not show.
+  if (canonicalPath === '/embed' || canonicalPath.startsWith('/embed/')) {
+    return (
+      <html lang={HTML_LANG[locale]} className={fontVariables}>
+        <body className="min-h-screen">
+          <LocaleProvider locale={locale}>{children}</LocaleProvider>
+        </body>
+      </html>
+    );
+  }
+
   // The chrome needs the year and the freshness on every page, so both are
   // resolved once here rather than repeated in each route. The locale is decided
   // by the middleware before render, so the document sets its language on the
   // server with no flash of English.
-  const [{ fy, available, dataMode, freshness }, locale, strings] = await Promise.all([
-    loadChrome(),
-    getLocale(),
-    getStrings(),
-  ]);
+  const { fy, available, dataMode, freshness } = await loadChrome();
 
   return (
     <html lang={HTML_LANG[locale]} className={fontVariables}>

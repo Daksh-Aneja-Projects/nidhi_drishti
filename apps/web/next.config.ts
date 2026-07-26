@@ -29,6 +29,7 @@ const config: NextConfig = {
     '/opengraph-image': ['./src/assets/fonts/**'],
     '/ministry/[id]/opengraph-image': ['./src/assets/fonts/**'],
     '/scheme/[id]/opengraph-image': ['./src/assets/fonts/**'],
+    '/state/[id]/opengraph-image': ['./src/assets/fonts/**'],
   },
   experimental: {
     // Charts and icons are large; pulling only what a page imports keeps the
@@ -41,11 +42,22 @@ const config: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        // Everything except /embed refuses framing. The embed routes exist to
+        // be framed by newsrooms, and middleware grants them
+        // frame-ancestors *; leaving the legacy X-Frame-Options header on them
+        // as well would only confuse whoever debugs the pair later.
+        source: '/((?!embed|hi/embed).*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        ],
+      },
+      {
+        source: '/(embed|hi/embed)/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         ],
       },
       {

@@ -1,16 +1,22 @@
 import { NOT_REPORTED, formatFiscalYearLong } from '@nidhi/core';
-import { getNationalSummary } from '@nidhi/db';
+import { getStateSummary } from '@nidhi/db';
 import { OG_CONTENT_TYPE, OG_SIZE, formatCardDate, renderShareCard } from '@/lib/og-card';
 import { getDataMode, resolveFy } from '@/lib/site';
 import { strings } from '@/lib/strings';
 
-/** National share card. */
+/**
+ * Per-state share card.
+ *
+ * A state reports the same fiscal stages as a ministry, so the card reuses the
+ * fiscal labels and the calendar comparison unchanged. The eyebrow names the
+ * jurisdiction, because a screenshot of a state figure travelling without the
+ * word "state" attached is exactly how the two ledgers get summed by accident.
+ */
 
-export const alt = `${strings.site.name}: union budget allocation, expenditure and spending pace`;
+export const alt = `${strings.site.name}: state allocation, expenditure and spending pace`;
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
-/** Expenditure against the calendar. Shared by the national and ministry cards. */
 const FISCAL_LABELS = {
   authority: strings.stage.authority,
   spent: strings.stage.spent,
@@ -20,40 +26,43 @@ const FISCAL_LABELS = {
 const fiscalPaceCaption = ({ spent, reference }: { spent: string; reference: string }) =>
   `${spent} spent, ${reference} of the year elapsed`;
 
-export default async function OpengraphImage() {
+export default async function StateOpengraphImage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   // Tolerates the database being unreachable, exactly as loadChrome does: a
   // build in CI has no database, and a production blip should still unfurl a
   // card that says the figures are unavailable rather than fail the request.
   const dataMode = await getDataMode().catch(() => 'demo' as const);
 
   try {
+    const { id } = await params;
     const { fy } = await resolveFy();
-    const national = await getNationalSummary(fy);
-    if (national) {
+    const state = await getStateSummary(fy, id);
+    if (state) {
+      const kindLabel = state.kind === 'ut' ? strings.states.kindUt : strings.states.kindState;
+
       return renderShareCard({
-        eyebrow: `Union budget · ${formatFiscalYearLong(fy)}`,
-        title: 'Government of India',
-        authority: national.currentAuthority,
-        spent: national.expenditureToDate,
-        balance: national.balance,
-        burn: national.burn,
-        asOf: formatCardDate(national.expenditureAsOf),
+        eyebrow: `${kindLabel} budget · ${formatFiscalYearLong(fy)}`,
+        title: state.name,
+        authority: state.currentAuthority,
+        spent: state.expenditureToDate,
+        balance: state.balance,
+        burn: state.burn,
+        asOf: formatCardDate(state.expenditureAsOf),
         dataMode,
         labels: FISCAL_LABELS,
         paceCaption: fiscalPaceCaption,
       });
     }
   } catch (error) {
-    console.error('[og] national card could not load figures', error);
+    console.error('[og] state card could not load figures', error);
   }
 
-  // A card is generated even with no figures, whether they are simply not yet
-  // published or the database could not be reached. A link that unfurls into
-  // nothing looks broken, where a card saying the figures are unavailable is
-  // simply true.
   return renderShareCard({
     eyebrow: strings.site.name,
-    title: strings.overview.emptyTitle,
+    title: strings.state.emptyTitle,
     authority: NOT_REPORTED,
     spent: NOT_REPORTED,
     balance: NOT_REPORTED,

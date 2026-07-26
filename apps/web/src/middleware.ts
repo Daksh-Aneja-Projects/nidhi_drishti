@@ -52,6 +52,17 @@ export function middleware(request: NextRequest): NextResponse {
     response = NextResponse.next({ request: { headers: requestHeaders } });
   }
 
+  // The newsroom embeds exist to be iframed into other sites, which the
+  // site-wide X-Frame-Options: SAMEORIGIN (next.config.ts) would forbid.
+  // `frame-ancestors` is the successor to X-Frame-Options and browsers that
+  // support it ignore X-Frame-Options when it is present, so setting it here
+  // opens exactly the `/embed` routes to framing while every other page keeps
+  // the same-origin rule.
+  if (canonicalPath === '/embed' || canonicalPath.startsWith('/embed/')) {
+    response.headers.set('Content-Security-Policy', 'frame-ancestors *');
+    response.headers.delete('X-Frame-Options');
+  }
+
   response.cookies.set(LOCALE_COOKIE, locale, {
     path: '/',
     maxAge: YEAR_SECONDS,

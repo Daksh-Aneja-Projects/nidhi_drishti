@@ -36,3 +36,13 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Internal design and requirement docs. Kept on disk for development (the code
+# and CLAUDE.md reference them by path), but never published to the public
+# repository. The compliance and disclaimer doc is the deliberate exception,
+# because the site's disclaimer links to it.
+/docs/*.md
+!/docs/08-legal-compliance.md
+
+# Local agent state (drift sentinel pause records)
+/.agent-state/

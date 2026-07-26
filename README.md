@@ -41,7 +41,7 @@ db               Postgres schema, migrations, seeds, and the data access layer
 pipelines        Python ingestion, one module per source, plus parsers
 agents           Python AI layer: extraction assist, entity resolution, anomaly, verification
 infra            Local Docker stack
-docs             Product, architecture, data model, agents, frontend, legal, telemetry
+docs             Public compliance and disclaimer notes
 ```
 
 ## Getting started
@@ -73,6 +73,24 @@ uv sync
 uv run pytest                       # parser, pipeline and agent tests
 uv run pipelines/sources/cga_monthly/run.py
 ```
+
+### AI layer, on local models by default
+
+The agent layer (extraction assist, entity resolution, anomaly narratives,
+verification) runs on a local Llama model through [Ollama](https://ollama.com) by
+default, so a deployment needs no API key and no data leaves the machine. Install
+Ollama, then pull the model the tiers default to:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+That is the whole setup: `AGENT_PROVIDER=ollama` is the default and the three
+model tiers resolve to `llama3.1:8b` out of the box. Point a tier at a larger tag
+(for example `llama3.1:70b` for the narrative tier) in `.env` if you have the
+VRAM. Set `AGENT_PROVIDER=anthropic` with an `ANTHROPIC_API_KEY` to use the
+hosted models instead; the optional live verification web search needs that
+provider, as a local model cannot fetch pages.
 
 > **Windows note.** If `docker` is not found, Docker Desktop is installed but not on
 > this shell's PATH. Prepend it:
@@ -117,11 +135,12 @@ database.
 
 ## Documentation
 
-Read in order: [PRD](docs/01-PRD.md), [architecture](docs/02-architecture.md),
-[data sources](docs/03-data-sources.md), [data model](docs/04-data-model.md),
-[agents](docs/05-agents.md), [frontend spec](docs/06-frontend-spec.md),
-[roadmap](docs/07-roadmap.md), [legal](docs/08-legal-compliance.md),
-[telemetry](docs/09-telemetry.md), [design system](docs/10-design-system.md).
+The public methodology and data-source catalogue are published in the running
+app, at `/methodology` and `/sources`. Compliance, licensing and the
+non-affiliation disclaimer are in
+[docs/08-legal-compliance.md](docs/08-legal-compliance.md). The detailed design
+and requirement documents are maintained with the project and are not part of the
+public repository.
 
 ## Data sources and attribution
 

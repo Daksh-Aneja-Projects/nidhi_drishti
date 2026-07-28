@@ -43,8 +43,9 @@ def settings() -> Settings:
             force_path_style=True,
         ),
         scraper=ScraperSettings(
-            user_agent="NidhiDrishtiTest/1.0 (test suite; contact@example.org)",
+            user_agent="NidhiDrishtiTest/1.0 (test suite)",
             min_delay_seconds=2.0,
+            contact="tests@example.org",
             respect_robots=True,
         ),
         alerts=AlertSettings(webhook_url="", telegram_bot_token="", telegram_chat_id=""),

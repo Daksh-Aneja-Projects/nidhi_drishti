@@ -56,13 +56,64 @@ class TestUserAgent:
             client.get("https://cga.nic.in/report")
 
         assert "NidhiDrishtiTest" in seen["/report"]
-        assert "contact@example.org" in seen["/report"]
+        # The contact is asserted on the From header, not here: see
+        # test_the_contact_is_sent_as_a_from_header.
+        assert "@" not in seen["/report"]
 
-    def test_a_user_agent_without_a_contact_is_refused(self) -> None:
+    def test_the_contact_is_sent_as_a_from_header(self, settings: Settings) -> None:
+        """RFC 9110 section 10.1.2, and the reason the contact left the UA.
+
+        indiabudget.gov.in refuses any User-Agent containing an email address or
+        a URL, whoever is asking. Moving the contact to the header the standard
+        reserves for it keeps us reachable and stops tripping that filter.
+        """
+        seen: dict[str, str] = {}
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            seen.update(request.headers)
+            if request.url.path == "/robots.txt":
+                return httpx.Response(200, text=ROBOTS_ALLOW_ALL)
+            return httpx.Response(200, content=b"ok", headers={"content-type": "text/plain"})
+
+        with make_client(settings, handle, RecordingSleeper()) as client:
+            client.get("https://cga.nic.in/report")
+        assert seen["from"] == settings.scraper.contact
+
+    def test_a_crawler_with_no_way_to_be_contacted_is_refused(self) -> None:
         from pipelines.lib.config import ScraperSettings
 
-        with pytest.raises(ConfigError):
-            ScraperSettings(user_agent="Mozilla/5.0", min_delay_seconds=2.0, respect_robots=True)
+        # Anonymity is the thing that is not allowed. Where the contact is
+        # stated may change; that it is stated may not.
+        with pytest.raises(ConfigError, match="SCRAPER_CONTACT"):
+            ScraperSettings(
+                user_agent="NidhiDrishti/1.0 (test)", min_delay_seconds=2.0, respect_robots=True
+            )
+        with pytest.raises(ConfigError, match="SCRAPER_CONTACT"):
+            ScraperSettings(
+                user_agent="NidhiDrishti/1.0 (test)",
+                min_delay_seconds=2.0,
+                respect_robots=True,
+                contact="not-an-address",
+            )
+
+    @pytest.mark.parametrize(
+        "user_agent",
+        [
+            "NidhiDrishti/1.0 (contact@example.org)",
+            "NidhiDrishti/1.0 (+https://example.org/bot)",
+        ],
+    )
+    def test_a_user_agent_carrying_an_address_is_refused(self, user_agent: str) -> None:
+        """Caught at configuration rather than as a mystery 403 months later."""
+        from pipelines.lib.config import ScraperSettings
+
+        with pytest.raises(ConfigError, match="must not contain"):
+            ScraperSettings(
+                user_agent=user_agent,
+                min_delay_seconds=2.0,
+                respect_robots=True,
+                contact="contact@example.org",
+            )
 
 
 class TestRobots:
@@ -134,17 +185,15 @@ class TestRateLimiting:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("SCRAPER_MIN_DELAY_SECONDS", "0.01")
-        monkeypatch.setenv(
-            "SCRAPER_USER_AGENT", "NidhiDrishti/1.0 (transparency project; contact@example.org)"
-        )
+        monkeypatch.setenv("SCRAPER_USER_AGENT", "NidhiDrishti/1.0 (transparency project)")
+        monkeypatch.setenv("SCRAPER_CONTACT", "contact@example.org")
         loaded = load_settings(env_file="does-not-exist")
         assert loaded.scraper.min_delay_seconds == MIN_ALLOWED_DELAY_SECONDS
 
     def test_a_stricter_delay_is_honoured(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SCRAPER_MIN_DELAY_SECONDS", "10")
-        monkeypatch.setenv(
-            "SCRAPER_USER_AGENT", "NidhiDrishti/1.0 (transparency project; contact@example.org)"
-        )
+        monkeypatch.setenv("SCRAPER_USER_AGENT", "NidhiDrishti/1.0 (transparency project)")
+        monkeypatch.setenv("SCRAPER_CONTACT", "contact@example.org")
         assert load_settings(env_file="does-not-exist").scraper.min_delay_seconds == 10.0
 
 

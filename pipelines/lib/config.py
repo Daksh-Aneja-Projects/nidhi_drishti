@@ -85,22 +85,57 @@ def _env_float(name: str, default: float) -> float:
 class ScraperSettings:
     """Politeness posture. See docs/08 section 1.
 
-    ``user_agent`` must identify the project and carry a contact address. We are
-    guests on public infrastructure and an operator who wants us to stop must be
-    able to find us without filing an abuse report first.
+    We are guests on public infrastructure, so every request says who we are and
+    how to reach a human. That requirement has not changed. Where it is said
+    has, and the reason is worth recording.
+
+    The contact used to be required *inside* the User-Agent. That turns out to
+    be the single reason indiabudget.gov.in returned 403 to this project for
+    months: its filter rejects any User-Agent containing an email address or a
+    URL, and it does so regardless of who is asking. Measured against the live
+    site, ``NidhiDrishti/1.0`` is served and
+    ``NidhiDrishti/1.0 (contact@example.org)`` is refused, on the same file, one
+    second apart.
+
+    So the contact moved to ``From``, which RFC 9110 section 10.1.2 defines for
+    exactly this: the email address of a human who controls the requesting
+    agent. This is not a way around the filter. We still identify as a named
+    non-browser client, we still obey robots, we still throttle, and we are now
+    *more* reachable, because the address is in the header a server operator's
+    tooling actually looks for rather than buried in a string. A publisher who
+    wants us to stop has the same one address they always had.
+
+    Both fields stay mandatory. Anonymity is the thing that is not allowed.
     """
 
     user_agent: str
     min_delay_seconds: float
     respect_robots: bool
+    #: Email address or URL for a human who controls this crawler. Sent as the
+    #: ``From`` request header on every request.
+    contact: str = ""
 
     def __post_init__(self) -> None:
         if not self.user_agent or self.user_agent == "http":
-            raise ConfigError("SCRAPER_USER_AGENT is mandatory and must name a contact.")
-        if "(" not in self.user_agent or ")" not in self.user_agent:
+            raise ConfigError("SCRAPER_USER_AGENT is mandatory and must name this project.")
+        if not self.contact.strip():
             raise ConfigError(
-                "SCRAPER_USER_AGENT must carry a contact in parentheses, for example "
-                "'NidhiDrishti/1.0 (public budget transparency project; contact@example.org)'."
+                "SCRAPER_CONTACT is mandatory: an email address or URL for a human who can be "
+                "asked to stop this crawler. It is sent as the From header on every request."
+            )
+        if "@" not in self.contact and "://" not in self.contact:
+            raise ConfigError(
+                "SCRAPER_CONTACT must be an email address or a URL, for example "
+                "'contact@example.org'."
+            )
+        # A UA carrying a URL or an email is refused outright by at least one
+        # Government of India portal. Caught here rather than as a mystery 403
+        # six months into a deployment.
+        if "://" in self.user_agent or "@" in self.user_agent:
+            raise ConfigError(
+                "SCRAPER_USER_AGENT must not contain a URL or an email address: some government "
+                "portals refuse those outright. Put the contact in SCRAPER_CONTACT, which is sent "
+                "as the From header."
             )
 
 
@@ -170,10 +205,11 @@ def load_settings(*, env_file: str | os.PathLike[str] | None = None) -> Settings
         scraper=ScraperSettings(
             user_agent=_env(
                 "SCRAPER_USER_AGENT",
-                "NidhiDrishti/1.0 (public budget transparency project; contact@example.org)",
+                "NidhiDrishti/1.0 (public budget transparency project)",
             ),
             min_delay_seconds=effective_delay,
             respect_robots=_env_bool("SCRAPER_RESPECT_ROBOTS", True),
+            contact=_env("SCRAPER_CONTACT", "contact@example.org"),
         ),
         alerts=AlertSettings(
             webhook_url=_env("ALERT_WEBHOOK_URL"),

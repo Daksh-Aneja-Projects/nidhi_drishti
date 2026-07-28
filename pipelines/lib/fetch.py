@@ -283,6 +283,10 @@ class PoliteClient:
             follow_redirects=True,
             headers={
                 "User-Agent": self._scraper.user_agent,
+                # RFC 9110 section 10.1.2: the address of a human who controls
+                # this agent. Set on every request, including robots.txt, so a
+                # publisher reading their logs can always reach someone.
+                "From": self._scraper.contact,
                 "Accept-Encoding": "gzip, deflate",
             },
         )

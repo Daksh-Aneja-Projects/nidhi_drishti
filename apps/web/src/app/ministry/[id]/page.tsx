@@ -285,14 +285,45 @@ async function OverviewTab({ ministry, fy }: { ministry: MinistrySummary; fy: st
       ]
     : [{ label: FISCAL_STAGE_LABELS.RE, kind: 'total', value: toPlain(ministry.re) }];
 
+  // A revision that was never presented and a supplementary grant that was
+  // never voted are not zero-height bars: they are steps that did not happen.
+  // Drawing them anyway spends a fifth of the chart on an empty slot and
+  // invites the reader to see a missing quantity where there is simply no
+  // event, so a step the source does not report is dropped.
+  const hasSupplementary = !isNotReported(ministry.supplementary);
+
+  // With no budget estimate and no supplementary, the opening total and the
+  // spending authority are the same number, and the chart would draw it twice
+  // as two identical full-height bars. One opening step, correctly labelled, is
+  // the whole truth in that case.
+  const authorityIsOpening = !beIsReported && !hasSupplementary;
+
   const steps: WaterfallStep[] = [
-    ...openingSteps,
-    {
-      label: FISCAL_STAGE_LABELS.SUPPLEMENTARY,
-      kind: 'delta',
-      value: toPlain(ministry.supplementary),
-    },
-    { label: strings.stage.authority, kind: 'total', value: toPlain(ministry.currentAuthority) },
+    ...(authorityIsOpening
+      ? [
+          {
+            label: strings.stage.authority,
+            kind: 'total' as const,
+            value: toPlain(ministry.currentAuthority),
+          },
+        ]
+      : [
+          ...openingSteps,
+          ...(hasSupplementary
+            ? [
+                {
+                  label: FISCAL_STAGE_LABELS.SUPPLEMENTARY,
+                  kind: 'delta' as const,
+                  value: toPlain(ministry.supplementary),
+                },
+              ]
+            : []),
+          {
+            label: strings.stage.authority,
+            kind: 'total' as const,
+            value: toPlain(ministry.currentAuthority),
+          },
+        ]),
     {
       label: FISCAL_STAGE_LABELS.EXPENDITURE,
       kind: 'delta',

@@ -37,8 +37,9 @@ def make_settings(*, sentry_dsn: str = "") -> Settings:
             force_path_style=True,
         ),
         scraper=ScraperSettings(
-            user_agent="NidhiDrishti/1.0 (test; contact@example.org)",
+            user_agent="NidhiDrishti/1.0 (test)",
             min_delay_seconds=2.0,
+            contact="tests@example.org",
             respect_robots=True,
         ),
         alerts=AlertSettings(webhook_url="", telegram_bot_token="", telegram_chat_id=""),

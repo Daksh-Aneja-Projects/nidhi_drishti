@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { EChartsOption } from 'echarts';
+import { formatINRCompact } from '@nidhi/core';
 import { Chart, axisLabelStyle, baseChartOption, chartTheme } from '@/components/chart';
 import { useLocale, useStrings } from '@/components/locale-provider';
 import { localePath } from '@/lib/i18n';
@@ -37,6 +38,22 @@ export interface VarianceRow {
   paceText: string;
 }
 
+/**
+ * Drop the leading "Ministry of" / "Department of" from an axis label.
+ *
+ * Every row on this axis is a ministry, so the words are carried fifteen times
+ * for no information, and they are the reason the longest names truncate at
+ * exactly the point where the reader needs them. The full name stays in the
+ * tooltip, the table fallback and the link.
+ *
+ * English only. Hindi puts the word last (मंत्रालय), where it is not a
+ * prefix to strip and dropping it would leave a bare adjective.
+ */
+function axisLabelFor(name: string, locale: string): string {
+  if (locale !== 'en') return name;
+  return name.replace(/^(Ministry|Department)\s+of\s+/i, '');
+}
+
 interface VarianceDumbbellProps {
   rows: VarianceRow[];
   fy: string;
@@ -55,24 +72,31 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
     return expanded ? sorted : sorted.slice(0, limit);
   }, [rows, expanded, limit]);
 
-  const byName = useMemo(() => new Map(shown.map((row) => [row.name, row])), [shown]);
+  // Keyed by the shortened axis label, because that is the name echarts hands
+  // back on hover and on select.
+  const byLabel = useMemo(
+    () => new Map(shown.map((row) => [axisLabelFor(row.name, locale), row])),
+    [shown, locale],
+  );
 
   const option = useMemo<EChartsOption>(() => {
     // echarts draws the first category at the bottom of a value-y chart, so the
     // list is reversed to put the largest shortfall at the top where it reads.
     const ordered = [...shown].reverse();
-    const names = ordered.map((row) => row.name);
+    const names = ordered.map((row) => axisLabelFor(row.name, locale));
 
     return {
       ...baseChartOption,
-      grid: { left: 8, right: 24, top: 28, bottom: 8, containLabel: true },
+      // Right leaves room for the outermost mark, which is a circle centred on
+      // the value and would otherwise be sliced in half by the plot edge.
+      grid: { left: 8, right: 30, top: 28, bottom: 8, containLabel: true },
       tooltip: {
         ...baseChartOption.tooltip,
         trigger: 'axis',
         axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(26,21,18,0.05)' } },
         formatter: (params: unknown) => {
           const list = params as Array<{ name: string }>;
-          const row = byName.get(list?.[0]?.name ?? '');
+          const row = byLabel.get(list?.[0]?.name ?? '');
           if (!row) return '';
           return [
             `<strong>${row.name}</strong>`,
@@ -85,7 +109,10 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
       },
       xAxis: {
         type: 'value',
-        axisLabel: { ...axisLabelStyle, formatter: (v: number) => `${Math.round(v / 1000)}k` },
+        // The same axis formatter as every other chart in the product: a bare
+        // "624k" is ambiguous about its own unit, and a reader should not have
+        // to learn a second money scale on this page.
+        axisLabel: { ...axisLabelStyle, formatter: (value: number) => formatINRCompact(value) },
         splitLine: { lineStyle: { color: chartTheme.rule, type: 'dashed' } },
         axisLine: { show: false },
         axisTick: { show: false },
@@ -96,7 +123,10 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
         axisLabel: {
           ...axisLabelStyle,
           fontFamily: 'var(--font-plex-sans), system-ui, sans-serif',
-          width: 190,
+          // Wide enough for the department names the budget actually uses.
+          // Truncating them to "Ministry of Consumer Affair..." makes the axis
+          // unreadable exactly where the largest gaps are.
+          width: 210,
           overflow: 'truncate',
           color: chartTheme.inkSoft,
         },
@@ -134,7 +164,7 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
             borderColor: chartTheme.ink,
             borderWidth: 1.5,
           },
-          data: ordered.map((row) => [row.authority, row.name]),
+          data: ordered.map((row) => [row.authority, axisLabelFor(row.name, locale)]),
         },
         {
           // Spending: the filled end, in the pace colour, so position on the
@@ -149,7 +179,7 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
             borderColor: chartTheme.paperRaised,
             borderWidth: 1.5,
           },
-          data: ordered.map((row) => [row.spent, row.name]),
+          data: ordered.map((row) => [row.spent, axisLabelFor(row.name, locale)]),
         },
       ],
       legend: {
@@ -161,7 +191,7 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
         data: [strings.stage.authority, strings.stage.spent, strings.analysis.gapSeries],
       },
     };
-  }, [shown, byName, strings]);
+  }, [shown, byLabel, strings, locale]);
 
   return (
     <div>
@@ -187,7 +217,7 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
           ]),
         }}
         onSelect={(name) => {
-          const row = byName.get(name);
+          const row = byLabel.get(name);
           if (row) router.push(localePath(`/ministry/${row.id}`, locale));
         }}
       />

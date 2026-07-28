@@ -129,6 +129,49 @@ export function AllocationWaterfall({
             value: column.span,
             itemStyle: { color: column.color },
           })),
+          // The value on each step. A waterfall is read as arithmetic, and
+          // arithmetic without its numbers asks the reader to measure bar
+          // heights against a gridline to check that the steps add up.
+          label: {
+            show: true,
+            position: 'top',
+            formatter: (params: { dataIndex: number }) =>
+              columns[params.dataIndex]?.valueText ?? '',
+            color: chartTheme.inkSoft,
+            fontSize: 10,
+            fontFamily: 'var(--font-plex-mono), monospace',
+          },
+        },
+        {
+          // Connectors: the ledger rule carried across from the top of one step
+          // to the foot of the next, which is what makes a row of bars read as
+          // one running total rather than as five separate quantities.
+          type: 'custom',
+          silent: true,
+          renderItem: (params: unknown, api: unknown) => {
+            const a = api as {
+              value: (i: number) => number;
+              coord: (p: number[]) => number[];
+            };
+            const index = (params as { dataIndex: number }).dataIndex;
+            const next = columns[index + 1];
+            const current = columns[index];
+            // A step the source did not report has no settled top to carry
+            // from, so the line stops rather than spanning the gap and
+            // implying continuity across a figure nobody published.
+            if (!next || !current || current.base === null || current.span === null) return null;
+            // Carry from the settled top of this step to the same height at the
+            // start of the next one.
+            const carry = current.base + current.span;
+            const [x1, y] = a.coord([index, carry]);
+            const [x2] = a.coord([index + 1, carry]);
+            return {
+              type: 'line',
+              shape: { x1: x1! + 4, y1: y!, x2: x2! - 4, y2: y! },
+              style: { stroke: chartTheme.ruleStrong, lineWidth: 1, lineDash: [3, 3] },
+            };
+          },
+          data: columns.map((_, index) => [index, 0]),
         },
       ],
     };

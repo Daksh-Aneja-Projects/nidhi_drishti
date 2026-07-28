@@ -41,6 +41,12 @@ interface PaceDistributionProps {
   parLabel: string;
 }
 
+/** Drawn mark diameters, in pixels. The axis padding is derived from the max. */
+const MIN_SYMBOL_PX = 9;
+const MAX_SYMBOL_PX = 38;
+/** Approximate pixels per row unit at the chart height this component renders. */
+const ROW_PX = 26;
+
 /** Lay marks out so a crowded band shows its density rather than one dot. */
 function dodge(points: PacePoint[]): Array<PacePoint & { row: number }> {
   const placed: Array<PacePoint & { row: number }> = [];
@@ -76,10 +82,15 @@ export function PaceDistribution({ points, parLabel }: PaceDistributionProps) {
   const option = useMemo<EChartsOption>(() => {
     const maxAuthority = Math.max(...laid.map((point) => point.authority), 1);
     const rows = Math.max(...laid.map((point) => Math.abs(point.row)), 2);
+    // Marks are placed by row index but drawn in pixels, so the axis has to
+    // reserve room for the radius of the largest one or the biggest ministry
+    // is the one that gets clipped by the plot edge.
+    const rowsWithPadding = rows + MAX_SYMBOL_PX / 2 / ROW_PX;
 
     return {
       ...baseChartOption,
-      grid: { left: 8, right: 16, top: 10, bottom: 34, containLabel: true },
+      // Top leaves room for the straight-line label, which sits above the plot.
+      grid: { left: 8, right: 16, top: 30, bottom: 34, containLabel: true },
       tooltip: {
         ...baseChartOption.tooltip,
         formatter: (params: unknown) => {
@@ -112,8 +123,8 @@ export function PaceDistribution({ points, parLabel }: PaceDistributionProps) {
       },
       yAxis: {
         type: 'value',
-        min: -rows - 0.6,
-        max: rows + 0.6,
+        min: -rowsWithPadding,
+        max: rowsWithPadding,
         show: false,
       },
       series: [
@@ -123,7 +134,7 @@ export function PaceDistribution({ points, parLabel }: PaceDistributionProps) {
           // apparent quantity and overstate every large ministry.
           symbolSize: (value: unknown) => {
             const authority = (value as number[])[2] ?? 0;
-            return 8 + 30 * Math.sqrt(authority / maxAuthority);
+            return MIN_SYMBOL_PX + (MAX_SYMBOL_PX - MIN_SYMBOL_PX) * Math.sqrt(authority / maxAuthority);
           },
           itemStyle: {
             color: (params: { data: { color: string } }) => params.data.color,
@@ -151,7 +162,10 @@ export function PaceDistribution({ points, parLabel }: PaceDistributionProps) {
               formatter: parLabel,
               color: chartTheme.ink,
               fontSize: 10,
-              position: 'end',
+              // Above the plot and nudged off the rule, so it never sits under
+              // a mark and never gets clipped by the top of the canvas.
+              position: 'start',
+              distance: 8,
               fontFamily: 'var(--font-plex-sans), system-ui, sans-serif',
             },
             data: [{ xAxis: 1 }],

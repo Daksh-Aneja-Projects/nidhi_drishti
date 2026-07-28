@@ -139,14 +139,17 @@ gets to weaken either.
 ## Sequenced plan
 
 **Phase 1, unblock the panel.** The prerequisite for everything else.
-1. `openpyxl` as a dependency; register `union_budget` against the real
-   `allsbe.xlsx`, parsing demand sheets to ministry-level BE/RE/Actual.
+1. DONE. `openpyxl` added; `union_budget` reads the real `allsbe.xlsx` and
+   writes 280 facts, 69 ministries across four stages plus national totals,
+   FY2022 to FY2027. FY2026 BE lands on the published 50.65 lakh crore.
 2. Wayback CDX ingestion keyed by timestamp, so prior years are addressable.
    Record the CDX timestamp and digest in `source_record`; the archive is the
    custodian, not the publisher, and the provenance must say so.
 3. CGA monthly workbook to the national monthly series.
-4. Entity resolution across years, since demand numbering changes when
-   ministries are reorganised. This is where the multi-year panel is won or lost.
+4. DONE for the current document: 11 missing bodies and 34 aliases seeded from
+   the budget's own demand list, and demands are summed per ministry rather than
+   overwriting each other. Cross-year resolution proper still matters once prior
+   years arrive from the archive, because demand numbering is renewed annually.
 
 **Phase 2, the analyses.** March rush, revision behaviour, landing forecast,
 lapse proxy, own-history outliers. Each one lands as a rule in the existing

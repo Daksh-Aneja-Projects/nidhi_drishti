@@ -55,6 +55,7 @@ Thumbs.db
 # because the site's disclaimer links to it.
 /docs/*.md
 !/docs/08-legal-compliance.md
+!/docs/SOURCES-AUDIT.md
 
 # Local agent state (drift sentinel pause records)
 /.agent-state/

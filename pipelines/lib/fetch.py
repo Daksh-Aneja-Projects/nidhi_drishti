@@ -17,6 +17,7 @@ escape hatch is what gets used at 2am when a source has just broken.
 
 from __future__ import annotations
 
+import ssl
 import threading
 import time
 import urllib.robotparser
@@ -196,6 +197,28 @@ def check_public_url(url: str) -> None:
             )
 
 
+def _government_tls_context() -> ssl.SSLContext:
+    """TLS settings that can actually complete a handshake with these hosts.
+
+    Several Government of India servers run TLS stacks that predate RFC 5746,
+    and OpenSSL 3 refuses to renegotiate with them by default. From this
+    machine, ``doe.gov.in`` and ``dea.gov.in`` fail with a connection reset on a
+    default context and return 200 with legacy renegotiation permitted. That is
+    a compatibility problem on their side, not a control on ours.
+
+    Certificate verification stays on, which is the part that matters: we still
+    confirm we are talking to the host we asked for. What is relaxed is only the
+    refusal to renegotiate with an old peer, and it is set here, once, rather
+    than left to each source module to rediscover as an unexplained
+    ``ConnectError``.
+    """
+    context = ssl.create_default_context()
+    # ssl.OP_LEGACY_SERVER_CONNECT, spelled numerically because the constant is
+    # missing on some Python builds.
+    context.options |= 0x00040000
+    return context
+
+
 class _HostThrottle:
     """Process-wide per-host rate limiter.
 
@@ -281,6 +304,7 @@ class PoliteClient:
             transport=transport,
             timeout=timeout,
             follow_redirects=True,
+            verify=_government_tls_context() if transport is None else True,
             headers={
                 "User-Agent": self._scraper.user_agent,
                 # RFC 9110 section 10.1.2: the address of a human who controls

@@ -58,10 +58,14 @@ class PipelineRun:
         *,
         settings: Settings | None = None,
         dry_run: bool = False,
+        variant: str | None = None,
     ) -> None:
         self.source_id = require_known_source(source_id)
         self.conn = conn
         self.settings = settings
+        # One registry entry can serve several unrelated tables (data.gov.in
+        # does). Drift is only meaningful against the same table's own history.
+        self.variant = variant
         self.dry_run = dry_run or conn is None
         self.run_id: int | None = None
         self.metrics: dict[str, Any] = {}
@@ -161,7 +165,7 @@ class PipelineRun:
         """Recent successful runs for this source, for :func:`drift.sanity_check`."""
         if self.conn is None:
             return []
-        return recent_run_metrics(self.conn, self.source_id, limit=limit)
+        return recent_run_metrics(self.conn, self.source_id, limit=limit, variant=self.variant)
 
     def add_drift(self, findings: Sequence[DriftFinding]) -> None:
         """Attach drift findings. Any finding downgrades the run to drift_alert."""

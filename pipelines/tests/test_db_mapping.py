@@ -8,8 +8,10 @@ the same document a no-op.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
+from typing import Any, cast
 
 import pytest
 
@@ -109,3 +111,62 @@ class TestUpsertSql:
         update_clause = _UPSERT_FACT_SQL.split("DO UPDATE SET", 1)[1]
         assert "source_record_id" not in update_clause
         assert "supersedes_fact_id" not in update_clause
+
+
+class TestDriftBaselineScope:
+    """A source can serve several unrelated tables. data.gov.in does.
+
+    Comparing a four-row national summary against a 792-row scheme statement
+    produces a row-count swing of several thousand percent and a wholly changed
+    column set. Both findings are arithmetically correct and completely
+    uninformative, and a sentinel that fires on every legitimate run is one
+    that gets ignored on the run that matters.
+    """
+
+    def test_the_baseline_query_narrows_to_one_dataset_when_asked(self) -> None:
+        captured = _capture_baseline_sql(variant="budget_at_a_glance")
+        assert "metrics -> 'extra' ->> 'dataset' = %s" in captured.sql
+        assert "budget_at_a_glance" in captured.params
+
+    def test_without_a_variant_the_whole_source_is_the_baseline(self) -> None:
+        captured = _capture_baseline_sql(variant=None)
+        assert "dataset" not in captured.sql
+        assert captured.params[0] == "ogd"
+
+    def test_a_drifted_run_never_becomes_the_baseline(self) -> None:
+        # Otherwise the next equally broken run looks normal by comparison.
+        assert "status = 'ok'" in _capture_baseline_sql(variant=None).sql
+
+
+class _Captured:
+    def __init__(self) -> None:
+        self.sql = ""
+        self.params: list[object] = []
+
+
+def _capture_baseline_sql(*, variant: str | None) -> _Captured:
+    """Run recent_run_metrics against a connection that only records the query."""
+    from pipelines.lib.db import recent_run_metrics
+
+    captured = _Captured()
+
+    class _Cursor:
+        def __enter__(self) -> _Cursor:
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def execute(self, sql: str, params: Sequence[object] = ()) -> None:
+            captured.sql = sql
+            captured.params = list(params)
+
+        def fetchall(self) -> list[dict[str, object]]:
+            return []
+
+    class _Conn:
+        def cursor(self) -> _Cursor:
+            return _Cursor()
+
+    recent_run_metrics(cast("Any", _Conn()), "ogd", variant=variant)
+    return captured

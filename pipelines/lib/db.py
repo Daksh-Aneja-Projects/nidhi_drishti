@@ -118,23 +118,35 @@ def recent_run_metrics(
     source_id: str,
     *,
     limit: int = 8,
+    variant: str | None = None,
 ) -> list[RunMetrics]:
     """Metrics of recent successful runs, most recent first.
 
     Only ``ok`` runs are returned. A drift-alerted run must never become the
     baseline that makes the next equally broken run look normal.
+
+    ``variant`` narrows the history to one dataset within a source. data.gov.in
+    is a single registry entry serving many unrelated tables, and a national
+    four-row summary compared against a 792-row scheme statement produces a
+    row-count swing of several thousand percent and a wholly changed column set.
+    Both findings are correct about the numbers and useless as signals, and a
+    sentinel that cries wolf on every legitimate run is one that gets ignored on
+    the run that matters.
     """
+    sql = """
+        SELECT metrics
+          FROM pipeline_run
+         WHERE source_id = %s AND status = 'ok'
+    """
+    params: list[Any] = [source_id]
+    if variant is not None:
+        sql += " AND metrics -> 'extra' ->> 'dataset' = %s"
+        params.append(variant)
+    sql += " ORDER BY started_at DESC LIMIT %s"
+    params.append(limit)
+
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT metrics
-              FROM pipeline_run
-             WHERE source_id = %s AND status = 'ok'
-             ORDER BY started_at DESC
-             LIMIT %s
-            """,
-            (source_id, limit),
-        )
+        cur.execute(sql, params)
         rows = cur.fetchall()
     return [RunMetrics.from_jsonable(row["metrics"] or {}) for row in rows]
 

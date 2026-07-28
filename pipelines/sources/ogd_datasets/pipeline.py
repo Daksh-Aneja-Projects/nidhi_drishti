@@ -37,7 +37,6 @@ from pipelines.lib.validation import validate_rows
 from pipelines.parsers.fy_dates import fy_from_indian_label, is_fy
 from pipelines.parsers.inr_amounts import (
     CRORE,
-    LAKH,
     AmountParseError,
     Unit,
     parse_amount_cr,
@@ -103,6 +102,15 @@ class DatasetSpec:
     #: ingesting all of them as if they were the same quantity would be wrong in
     #: several directions at once. Empty means every row.
     keep_rows: tuple[str, ...] = ()
+    #: Normalised row labels to drop. Budget tables interleave per-scheme lines
+    #: with the ministry's own "Total" line; taking both would double the
+    #: ministry, which is the single most common way a budget dashboard ends up
+    #: reporting twice the real number.
+    drop_rows: tuple[str, ...] = ()
+    #: Field the keep/drop test reads. Defaults to ``entity_field``, and differs
+    #: when a table is filtered on one column and named by another: the ministry
+    #: totals of a scheme-level table are the rows whose scheme is "Total".
+    row_filter_field: str | None = None
     #: Fixed entity id, for a table whose rows are one known aggregate rather
     #: than a list of named organisations. Skips alias resolution, which has
     #: nothing to resolve.
@@ -117,6 +125,24 @@ class DatasetSpec:
 #: packages/core. Written out rather than imported: this is Python and that is
 #: TypeScript, and the pair is pinned by a test.
 NATIONAL_ENTITY_ID = "india"
+
+
+#: The four columns the Central Sector Schemes statement publishes, in the
+#: layout it has used for years: last year's actual, this year's budget and
+#: revised estimates, next year's budget estimate. Shared by the two datasets
+#: that read that resource, so a republished table is one edit rather than two
+#: that can drift apart.
+#:
+#: The column names are as the portal spells them, underscores and all. Note
+#: that "revised_estimates2022_2023_total" has no underscore before the year
+#: while its budget-estimate neighbour does; that is the portal's spelling, not
+#: a typo here, and a tidied-up guess would silently match nothing.
+_BUDGET_COLUMNS: tuple[ColumnSpec, ...] = (
+    ColumnSpec(field="actuals_2021_2022_total", fy="FY2022", stage="EXPENDITURE"),
+    ColumnSpec(field="budget_estimates_2022_2023_total", fy="FY2023", stage="BE"),
+    ColumnSpec(field="revised_estimates2022_2023_total", fy="FY2023", stage="RE"),
+    ColumnSpec(field="budget_estimates2023_2024_total", fy="FY2024", stage="BE"),
+)
 
 
 #: Registered resources. Adding one is a deliberate act: docs/03 requires a
@@ -151,28 +177,43 @@ DATASETS: dict[str, DatasetSpec] = {
             ColumnSpec(field="_2023_2024_be", fy="FY2024", stage="BE"),
         ),
     ),
-    "ministry_wise_expenditure": DatasetSpec(
-        # Placeholder resource id. data.gov.in resource ids are opaque UUIDs and
-        # must be filled in from the portal before this dataset is enabled.
-        resource_id="",
-        title="Ministry-wise expenditure",
-        entity_type="ministry",
-        stage="EXPENDITURE",
-        unit=CRORE,
-        entity_field="ministry",
-        amount_field="expenditure",
-        fy_field="financial_year",
-        is_cumulative=True,
-    ),
-    "scheme_wise_allocation": DatasetSpec(
-        resource_id="",
-        title="Scheme-wise allocation",
+    # Central Sector Schemes as laid before Parliament, one row per scheme with
+    # its ministry, its demand number, and actuals, budget and revised estimates
+    # across three years.
+    #
+    # The per-ministry "Total" rows are dropped rather than ingested: see the
+    # note above for why they are not a ministry allocation, and taking them
+    # alongside the scheme rows would in any case count every rupee twice.
+    #
+    # Only the ``_total`` columns are read. The revenue and capital splits are
+    # also published, and the resource's own field list contains two columns
+    # whose names differ by a single underscore, one of which is empty. Reading
+    # only the totals sidesteps a naming collision that nothing in the response
+    # explains.
+    # NOT REGISTERED: the "Total" rows of the resource below, as a ministry
+    # allocation.
+    #
+    # They look like exactly what a ministry page needs, and they are not. The
+    # statement's Total for a ministry equals the sum of that ministry's scheme
+    # rows *within this statement*, verified against the published data for all
+    # 69 ministries in it, to the paisa. It is therefore the total of that
+    # ministry's Central Sector Schemes, not its demand for grants. Publishing it
+    # as the ministry's budget would understate every ministry, by an amount that
+    # varies per ministry, and would make percent-spent meaningless against it.
+    #
+    # Ministry-level allocation comes from the Expenditure Budget instead, which
+    # is a PDF on a portal that refuses automated clients. That is what the
+    # intake path in data/intake exists for.
+    "scheme_wise_budget": DatasetSpec(
+        resource_id="38772e39-7774-4dca-b8d4-39aa40b60963",
+        title="Central Sector Schemes, scheme level, Union Budget 2021-22 to 2023-24",
         entity_type="scheme",
         stage="BE",
-        unit=LAKH,
-        entity_field="scheme_name",
-        amount_field="budget_estimate",
-        fy_field="financial_year",
+        unit=CRORE,
+        entity_field="scheme",
+        row_filter_field="scheme",
+        drop_rows=("total",),
+        columns=_BUDGET_COLUMNS,
     ),
 }
 
@@ -301,12 +342,23 @@ def _parse_wide_records(
     rows: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     wanted = set(spec.keep_rows)
+    unwanted = set(spec.drop_rows)
+    filter_field = spec.row_filter_field or spec.entity_field
     matched_any = False
 
     for index, record in enumerate(records):
         label = str(record.get(spec.entity_field, "")).strip()
         normalised = normalise_org_name(label)
-        if wanted and normalised not in wanted:
+        selector = (
+            normalised
+            if filter_field == spec.entity_field
+            else normalise_org_name(str(record.get(filter_field, "")).strip())
+        )
+        if wanted and selector not in wanted:
+            continue
+        if selector in unwanted:
+            continue
+        if not label:
             continue
         matched_any = True
 
@@ -463,7 +515,11 @@ def run(
     http = client or PoliteClient(resolved_settings)
 
     try:
-        with PipelineRun(SOURCE_ID, conn, dry_run=dry_run) as run_ctx:
+        # Scoped to the dataset: this source serves several unrelated tables,
+        # and comparing a four-row national summary against a 792-row scheme
+        # statement produces findings that are arithmetically correct and
+        # completely uninformative.
+        with PipelineRun(SOURCE_ID, conn, dry_run=dry_run, variant=dataset) as run_ctx:
             ingested = ingest_url(
                 resource_url(spec, resolved_settings),
                 source_id=SOURCE_ID,

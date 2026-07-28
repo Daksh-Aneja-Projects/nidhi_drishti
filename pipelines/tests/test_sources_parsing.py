@@ -14,12 +14,13 @@ import json
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
 from pipelines.lib.drift import RunMetrics, sanity_check, should_abort
 from pipelines.lib.validation import validate_rows
-from pipelines.parsers.inr_amounts import CRORE
+from pipelines.parsers.inr_amounts import CRORE, LAKH
 from pipelines.sources.cga_monthly.pipeline import CgaExpenditureRow, parse_expenditure_table
 from pipelines.sources.cga_monthly.pipeline import to_facts as cga_to_facts
 from pipelines.sources.cppp_tenders.pipeline import (
@@ -35,8 +36,14 @@ from pipelines.sources.obi_historical.pipeline import (
 )
 from pipelines.sources.ogd_datasets.pipeline import (
     DATASETS,
+    NATIONAL_ENTITY_ID,
+    ColumnSpec,
+    DatasetSpec,
     OgdRecordRow,
     parse_resource_payload,
+)
+from pipelines.sources.ogd_datasets.pipeline import (
+    to_facts as ogd_to_facts,
 )
 from pipelines.sources.pfms_published.pipeline import (
     PfmsReleaseRow,
@@ -360,10 +367,34 @@ class TestOgdDatasets:
             }
         )
 
+    #: Long-format specs, built here rather than taken from the registry. These
+    #: tests exercise the parser, not the catalogue, and tying them to whichever
+    #: datasets happen to be registered makes registering one a test failure.
+    MINISTRY_SPEC = DatasetSpec(
+        resource_id="test-ministry",
+        title="Ministry-wise expenditure",
+        entity_type="ministry",
+        stage="EXPENDITURE",
+        unit=CRORE,
+        entity_field="ministry",
+        amount_field="expenditure",
+        fy_field="financial_year",
+        is_cumulative=True,
+    )
+    SCHEME_SPEC = DatasetSpec(
+        resource_id="test-scheme",
+        title="Scheme-wise allocation",
+        entity_type="scheme",
+        stage="BE",
+        unit=LAKH,
+        entity_field="scheme_name",
+        amount_field="budget_estimate",
+        fy_field="financial_year",
+    )
+
     def test_parses_the_api_envelope(self) -> None:
-        spec = DATASETS["ministry_wise_expenditure"]
         rows, errors, fields = parse_resource_payload(
-            self._payload(), spec, dataset_name="ministry_wise_expenditure"
+            self._payload(), self.MINISTRY_SPEC, dataset_name="ministry_wise_expenditure"
         )
         assert errors == []
         assert fields == ["ministry", "financial_year", "expenditure"]
@@ -372,7 +403,6 @@ class TestOgdDatasets:
 
     def test_the_declared_unit_is_applied(self) -> None:
         """A bare number from an API is as ambiguous as one from a PDF."""
-        spec = DATASETS["scheme_wise_allocation"]
         payload = json.dumps(
             {
                 "field": [{"id": "scheme_name"}, {"id": "budget_estimate"}],
@@ -385,12 +415,13 @@ class TestOgdDatasets:
                 ],
             }
         )
-        rows, _, _ = parse_resource_payload(payload, spec, dataset_name="scheme_wise_allocation")
+        rows, _, _ = parse_resource_payload(
+            payload, self.SCHEME_SPEC, dataset_name="scheme_wise_allocation"
+        )
         # Declared in lakh, so 63,50,000 lakh is 63,500 crore.
         assert rows[0]["amount_inr_cr"] == Decimal("63500")
 
     def test_a_record_without_a_fiscal_year_is_queued(self) -> None:
-        spec = DATASETS["ministry_wise_expenditure"]
         payload = json.dumps(
             {
                 "field": [{"id": "ministry"}, {"id": "expenditure"}],
@@ -398,22 +429,164 @@ class TestOgdDatasets:
             }
         )
         rows, errors, _ = parse_resource_payload(
-            payload, spec, dataset_name="ministry_wise_expenditure"
+            payload, self.MINISTRY_SPEC, dataset_name="ministry_wise_expenditure"
         )
         assert rows == []
         assert "fiscal year" in errors[0]["reason"]
 
     def test_rows_satisfy_the_schema(self) -> None:
-        spec = DATASETS["ministry_wise_expenditure"]
         rows, _, _ = parse_resource_payload(
-            self._payload(), spec, dataset_name="ministry_wise_expenditure"
+            self._payload(), self.MINISTRY_SPEC, dataset_name="ministry_wise_expenditure"
         )
         assert len(validate_rows(rows, OgdRecordRow, source_id="ogd")) == 2
 
     def test_a_non_json_response_raises_clearly(self) -> None:
-        spec = DATASETS["ministry_wise_expenditure"]
         with pytest.raises(ValueError, match="did not return JSON"):
-            parse_resource_payload("<html>rate limited</html>", spec, dataset_name="x")
+            parse_resource_payload(
+                "<html>rate limited</html>", self.MINISTRY_SPEC, dataset_name="x"
+            )
 
     def test_every_registered_dataset_declares_a_unit(self) -> None:
         assert all(spec.unit is not None for spec in DATASETS.values())
+
+    def test_every_registered_dataset_has_a_resource_id(self) -> None:
+        # A registered dataset with a blank id cannot run, and one sitting in
+        # the registry as a placeholder reads like a working source on /sources.
+        for name, spec in DATASETS.items():
+            assert spec.resource_id, f"{name} has no resource id"
+
+
+class TestOgdWideTables:
+    """Budget tables put the year and the stage in the column heading.
+
+    The risk these tests guard is quiet: a column that changes name is a stage
+    that silently stops being ingested while the run still reports success.
+    """
+
+    PAYLOAD = json.dumps(
+        {
+            "field": [
+                {"id": "ministry_department"},
+                {"id": "scheme"},
+                {"id": "actuals_2021_2022_total"},
+                {"id": "budget_estimates_2022_2023_total"},
+            ],
+            "records": [
+                {
+                    "ministry_department": "Department of Agriculture and Farmers Welfare",
+                    "scheme": "Total",
+                    "actuals_2021_2022_total": "105368.88",
+                    "budget_estimates_2022_2023_total": "105710",
+                },
+                {
+                    "ministry_department": "Department of Agriculture and Farmers Welfare",
+                    "scheme": "PM-KISAN",
+                    "actuals_2021_2022_total": "66825.00",
+                    "budget_estimates_2022_2023_total": "68000",
+                },
+            ],
+        }
+    )
+
+    COLUMNS = (
+        ColumnSpec(field="actuals_2021_2022_total", fy="FY2022", stage="EXPENDITURE"),
+        ColumnSpec(field="budget_estimates_2022_2023_total", fy="FY2023", stage="BE"),
+    )
+
+    def _spec(self, **overrides: object) -> DatasetSpec:
+        base: dict[str, object] = {
+            "resource_id": "test-wide",
+            "title": "Wide budget table",
+            "entity_type": "ministry",
+            "stage": "BE",
+            "unit": CRORE,
+            "entity_field": "ministry_department",
+            "columns": self.COLUMNS,
+        }
+        base.update(overrides)
+        return DatasetSpec(**cast("Any", base))
+
+    def test_each_declared_column_becomes_its_own_row(self) -> None:
+        rows, errors, _ = parse_resource_payload(self.PAYLOAD, self._spec(), dataset_name="wide")
+        assert errors == []
+        assert len(rows) == 4
+        assert {(row["fy"], row["stage"]) for row in rows} == {
+            ("FY2022", "EXPENDITURE"),
+            ("FY2023", "BE"),
+        }
+
+    def test_the_ministry_total_and_its_schemes_are_never_taken_together(self) -> None:
+        # Taking both would report the ministry twice, which is the single most
+        # common way a budget dashboard ends up showing double the real figure.
+        totals, _, _ = parse_resource_payload(
+            self.PAYLOAD,
+            self._spec(row_filter_field="scheme", keep_rows=("total",)),
+            dataset_name="ministry",
+        )
+        schemes, _, _ = parse_resource_payload(
+            self.PAYLOAD,
+            self._spec(
+                entity_field="scheme",
+                entity_type="scheme",
+                row_filter_field="scheme",
+                drop_rows=("total",),
+            ),
+            dataset_name="scheme",
+        )
+        assert {row["entity_raw"] for row in totals} == {
+            "Department of Agriculture and Farmers Welfare"
+        }
+        assert {row["entity_raw"] for row in schemes} == {"PM-KISAN"}
+
+    def test_a_renamed_column_is_an_error_not_a_silent_skip(self) -> None:
+        spec = self._spec(
+            columns=(ColumnSpec(field="actuals_2024_2025_total", fy="FY2025", stage="EXPENDITURE"),)
+        )
+        rows, errors, _ = parse_resource_payload(self.PAYLOAD, spec, dataset_name="wide")
+        assert rows == []
+        assert any("absent from the response" in error["reason"] for error in errors)
+
+    def test_a_vanished_row_selector_is_reported(self) -> None:
+        spec = self._spec(row_filter_field="scheme", keep_rows=("grand total",))
+        rows, errors, _ = parse_resource_payload(self.PAYLOAD, spec, dataset_name="wide")
+        assert rows == []
+        assert any("None of the rows" in error["reason"] for error in errors)
+
+    def test_no_registered_dataset_reads_a_scheme_statement_as_a_ministry_budget(self) -> None:
+        """The Central Sector Schemes statement is not a ministry's budget.
+
+        Its per-ministry "Total" row equals the sum of that ministry's scheme
+        rows in the same statement, checked against the published data for all
+        69 ministries in it. So it totals that ministry's central sector
+        schemes, not its demand for grants. Ingesting it as a ministry
+        allocation would understate every ministry by a different amount and
+        make percent-spent meaningless. Ministry allocation comes from the
+        Expenditure Budget, through the intake path.
+        """
+        scheme_statement = "38772e39-7774-4dca-b8d4-39aa40b60963"
+        offenders = [
+            name
+            for name, spec in DATASETS.items()
+            if spec.resource_id == scheme_statement and spec.entity_type == "ministry"
+        ]
+        assert offenders == [], (
+            f"{offenders} reads the Central Sector Schemes statement as a ministry budget. "
+            f"Its totals cover schemes only."
+        )
+
+    def test_a_fixed_entity_skips_alias_resolution(self) -> None:
+        spec = self._spec(entity_type="national", entity_id="india")
+        rows, _, _ = parse_resource_payload(self.PAYLOAD, spec, dataset_name="wide")
+        validated = validate_rows(rows, OgdRecordRow, source_id="ogd")
+        facts, unresolved = ogd_to_facts(validated, spec, resolve_entity={})
+        assert unresolved == []
+        assert {fact.entity_id for fact in facts} == {"india"}
+
+    def test_the_national_entity_id_matches_the_typescript_constant(self) -> None:
+        # packages/core exports NATIONAL_ENTITY_ID = 'india'. The two are
+        # written out separately because one is Python and one is TypeScript,
+        # and a mismatch would put national facts where no page reads them.
+        source = (
+            Path(__file__).resolve().parents[2] / "packages" / "core" / "src" / "types.ts"
+        ).read_text(encoding="utf-8")
+        assert f"NATIONAL_ENTITY_ID = '{NATIONAL_ENTITY_ID}'" in source

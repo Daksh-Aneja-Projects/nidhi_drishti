@@ -21,9 +21,12 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
 fi
 
 # A managed host will refuse an unencrypted connection; most append this
-# themselves, but a pasted string sometimes lacks it.
+# themselves, but a pasted string sometimes lacks it. Not applied to a local
+# database, which usually has no TLS at all and would refuse the connection
+# outright, and this script is the same one used to rebuild a dev machine.
 case "$DATABASE_URL" in
   *sslmode=*) ;;
+  *localhost*|*127.0.0.1*) ;;
   *\?*) export DATABASE_URL="${DATABASE_URL}&sslmode=require" ;;
   *)    export DATABASE_URL="${DATABASE_URL}?sslmode=require" ;;
 esac

@@ -256,6 +256,9 @@ async function OverviewTab({ ministry, fy }: { ministry: MinistrySummary; fy: st
   }
 
   const bars = toBars(monthly);
+  // At least one month whose own spend could actually be recovered from the
+  // cumulative series. See the monthly section below.
+  const hasMonthlyValues = bars.some((bar) => bar.monthly !== null);
   const priorByIndex = new Map(
     priorMonthly.map((point) => [
       point.fiscalMonthIndex,
@@ -368,7 +371,12 @@ async function OverviewTab({ ministry, fy }: { ministry: MinistrySummary; fy: st
         </Section>
 
         <Section title={strings.ministry.monthlyTitle} help={strings.ministry.monthlyHelp}>
-          {bars.length > 0 ? (
+          {/* Rows are not values. A source that has published one cumulative
+              figure yields one month whose own spend cannot be recovered, and
+              the chart drew an axis label above an empty plot. An empty chart
+              is worse than no chart: it looks like a rendering failure rather
+              than like a source that has not published enough yet. */}
+          {hasMonthlyValues ? (
             <MonthlySpendChart
               chartId="ministry_monthly_spend"
               points={bars}

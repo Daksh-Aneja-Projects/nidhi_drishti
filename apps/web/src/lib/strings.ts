@@ -273,7 +273,8 @@ export const strings = {
       'Each step is a different stage of the same rupee. Authority is permission to spend. Expenditure is money accounted as spent.',
     monthlyHelp:
       'De-cumulated from the cumulative monthly accounts. The lighter bars are the same month a year earlier. Hatched months are provisional.',
-    monthlyEmpty: 'No monthly accounts have been ingested for this ministry and year.',
+    monthlyEmpty:
+      'Monthly spending cannot be shown yet. The Controller General publishes cumulative totals, so a month’s own spending is the difference between two of them, and at least two consecutive months have to be on record before any can be shown.',
     splitHelp:
       'Revenue spending covers running costs. Capital spending creates assets. The split is reported on the expenditure side.',
     splitEmpty: 'The revenue and capital split is not reported for this ministry.',

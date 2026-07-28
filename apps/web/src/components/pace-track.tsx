@@ -38,7 +38,7 @@ interface PaceTrackProps {
 }
 
 const SIZES: Record<PaceTrackSize, { height: number; markerHeight: number; className: string }> = {
-  hero: { height: 44, markerHeight: 60, className: 'w-full' },
+  hero: { height: 44, markerHeight: 52, className: 'w-full' },
   default: { height: 20, markerHeight: 30, className: 'w-full' },
   chip: { height: 10, markerHeight: 16, className: 'w-20' },
 };
@@ -90,6 +90,25 @@ export async function PaceTrack({
 
   return (
     <div className={className}>
+      {/* The marker's name, on its own row above the track.
+          It used to be absolutely positioned inside the track's box, where it
+          sat on top of the fill and collided with the hatched region whenever
+          the year was far enough along. A label that can overlap the data it
+          describes is a label in the wrong container, so it gets its own. */}
+      {size === 'hero' ? (
+        <div className="relative mb-1 h-3.5" aria-hidden="true">
+          <span
+            className="absolute whitespace-nowrap text-[10px] font-medium uppercase leading-none tracking-wider text-[color:var(--color-ink-soft)]"
+            style={
+              calendarPos > 82
+                ? { right: `${100 - calendarPos}%`, transform: 'translateX(-6px)' }
+                : { left: `${calendarPos}%`, transform: 'translateX(6px)' }
+            }
+          >
+            {strings.pace.calendarMarker}
+          </span>
+        </div>
+      ) : null}
       <div
         className="relative"
         style={{ height: markerHeight }}
@@ -155,20 +174,6 @@ export async function PaceTrack({
             style={{ backgroundColor: 'var(--color-ink)' }}
             aria-hidden="true"
           />
-          {/* Named at the rule, because an unlabelled line on a chart is a
-              thing the reader has to go and look up. */}
-          {size === 'hero' ? (
-            <span
-              className="absolute top-0 whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-[color:var(--color-ink)]"
-              style={{
-                left: calendarPos > 70 ? 'auto' : '4px',
-                right: calendarPos > 70 ? '4px' : 'auto',
-              }}
-              aria-hidden="true"
-            >
-              {strings.pace.calendarMarker}
-            </span>
-          ) : null}
         </div>
       </div>
 

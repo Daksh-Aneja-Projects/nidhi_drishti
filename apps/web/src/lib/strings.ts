@@ -89,8 +89,12 @@ export const strings = {
     documentDate: 'Document date',
     fetched: 'Fetched',
     method: 'Extraction',
+    retrieval: 'Retrieval',
+    retrievedBy: 'Downloaded by',
     artifact: 'Stored copy',
     provisional: 'Provisional. The source may revise this figure.',
+    manualRetrieval:
+      'This source blocks automated access, so the document was downloaded by hand from the portal. It updates only when someone repeats that, not on a schedule.',
     openSource: 'Open the source document',
     missing: 'No source record is attached to this figure.',
   },
@@ -551,7 +555,7 @@ export const strings = {
       'What we fetch, how it becomes a number on a page, what the rules test for, and the things this data cannot tell you.',
     pipelineTitle: 'How a figure reaches this site',
     pipelineSteps: [
-      'A fetcher downloads the published document from the institution that issued it, at the pace that institution publishes.',
+      'A fetcher downloads the published document from the institution that issued it, at the pace that institution publishes. Where a portal refuses automated requests, a named person downloads the same public document by hand instead, and every figure from it says so.',
       'The document is stored exactly as fetched, hashed and never edited, so any figure can be traced back to the page it came from.',
       'A parser reads the tables and writes rows into a staging area with no interpretation applied.',
       'Every row is checked against a schema. A source that changes shape raises an alert and writes nothing, rather than writing something plausible and wrong.',

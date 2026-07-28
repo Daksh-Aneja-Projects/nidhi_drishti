@@ -6,6 +6,7 @@ import {
   EXTRACTION_METHOD_LABELS,
   FISCAL_STAGE_DESCRIPTIONS,
   FISCAL_STAGE_LABELS,
+  RETRIEVAL_METHOD_LABELS,
   type FiscalStage,
   type Provenance,
 } from '@nidhi/core';
@@ -132,6 +133,25 @@ export function ProvenancePopover({
               <ProvenanceRow label={strings.provenance.method}>
                 {EXTRACTION_METHOD_LABELS[provenance.extractionMethod]}
               </ProvenanceRow>
+
+              <ProvenanceRow label={strings.provenance.retrieval}>
+                {RETRIEVAL_METHOD_LABELS[provenance.retrievalMethod]}
+              </ProvenanceRow>
+
+              {provenance.retrievedBy ? (
+                <ProvenanceRow label={strings.provenance.retrievedBy}>
+                  {provenance.retrievedBy}
+                </ProvenanceRow>
+              ) : null}
+
+              {provenance.retrievalMethod === 'operator_download' ? (
+                // Said plainly, because it changes what the figure's freshness
+                // means: a hand-obtained document does not refresh on a
+                // schedule, however recent its timestamp looks.
+                <span className="mt-3 flex gap-2 border-l-2 border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper-sunk)] px-3 py-2 text-[12px] text-[color:var(--color-ink-soft)]">
+                  {strings.provenance.manualRetrieval}
+                </span>
+              ) : null}
 
               {provenance.isProvisional ? (
                 <span className="mt-3 flex gap-2 border-l-2 border-[color:var(--color-seal)] bg-[color:var(--color-paper-sunk)] px-3 py-2 text-[12px] text-[color:var(--color-ink-soft)]">

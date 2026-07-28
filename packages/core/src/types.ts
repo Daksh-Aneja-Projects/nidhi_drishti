@@ -148,7 +148,31 @@ export interface Provenance {
   extractionMethod: ExtractionMethod;
   /** True when the source labels the figure provisional and may revise it. */
   isProvisional: boolean;
+  /** How the document itself was obtained. */
+  retrievalMethod: RetrievalMethod;
+  /**
+   * Who downloaded it, for a manual retrieval. Null for an automated fetch,
+   * which was performed by nobody in particular.
+   */
+  retrievedBy: string | null;
 }
+
+/**
+ * How a document came into our hands.
+ *
+ * Some official portals refuse automated clients outright, and the answer is a
+ * person downloading the file in a browser rather than a cleverer scraper
+ * (docs/08 section 1). Both routes produce real evidence, but they do not carry
+ * the same guarantees: an automated source re-runs on a schedule, a manual one
+ * is only as current as the last time somebody did it. The reader is told
+ * which, rather than left to assume.
+ */
+export type RetrievalMethod = 'automated' | 'operator_download';
+
+export const RETRIEVAL_METHOD_LABELS: Record<RetrievalMethod, string> = {
+  automated: 'Fetched automatically from the source',
+  operator_download: 'Downloaded by hand from the source portal',
+};
 
 export type ExtractionMethod =
   | 'structured_api'

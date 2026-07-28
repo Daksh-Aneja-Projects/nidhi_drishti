@@ -297,6 +297,61 @@ describeDb('provenance reaches the interface', () => {
     expect((await getProvenanceMap([asNumber])).size).toBe(1);
   });
 
+  it('reports how a document was obtained, not only what it was', async () => {
+    // A hand-downloaded document is real evidence, but it does not refresh on a
+    // schedule the way an automated source does. The reader is told which.
+    await inRollback(async (client) => {
+      const { rows } = await client.query<{ source_record_id: string }>(
+        `INSERT INTO source_record
+           (source_id, url, artifact_key, artifact_sha256, fetched_at,
+            retrieval_method, retrieved_by, retrieval_note)
+         VALUES ('union_budget', 'https://www.indiabudget.gov.in/doc/eb/sumsbe.pdf',
+                 'raw/ub/x', $1, now(), 'operator_download', 'A. Operator', 'portal blocks bots')
+         RETURNING source_record_id`,
+        ['b'.repeat(64)],
+      );
+      const id = rows[0]!.source_record_id;
+      const { rows: view } = await client.query<{
+        retrieval_method: string;
+        retrieved_by: string;
+      }>(
+        `SELECT retrieval_method, retrieved_by FROM v_provenance WHERE source_record_id = $1`,
+        [id],
+      );
+      expect(view).toHaveLength(1);
+      expect(view[0]!.retrieval_method).toBe('operator_download');
+      expect(view[0]!.retrieved_by).toBe('A. Operator');
+    });
+  });
+
+  it('refuses a manual retrieval that names nobody', async () => {
+    // Without a name, "downloaded by hand" is unauditable, which is worse than
+    // not claiming it at all.
+    await inRollback(async (client) => {
+      await expect(
+        client.query(
+          `INSERT INTO source_record
+             (source_id, url, artifact_key, artifact_sha256, fetched_at, retrieval_method)
+           VALUES ('union_budget', 'https://www.indiabudget.gov.in/x', 'raw/ub/y', $1, now(),
+                   'operator_download')`,
+          ['c'.repeat(64)],
+        ),
+      ).rejects.toThrow(/source_record_operator_named/);
+    });
+  });
+
+  it('treats an unlabelled record as an automated fetch, which is what every old row was', async () => {
+    await inRollback(async (client) => {
+      const { rows } = await client.query<{ retrieval_method: string }>(
+        `INSERT INTO source_record (source_id, url, artifact_key, artifact_sha256, fetched_at)
+         VALUES ('union_budget', 'https://www.indiabudget.gov.in/z', 'raw/ub/z', $1, now())
+         RETURNING retrieval_method`,
+        ['d'.repeat(64)],
+      );
+      expect(rows[0]!.retrieval_method).toBe('automated');
+    });
+  });
+
   it('attaches provenance to the national headline figures', async () => {
     const fy = await getDefaultFiscalYear();
     if (!fy) return;

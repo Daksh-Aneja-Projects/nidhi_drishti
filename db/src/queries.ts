@@ -55,6 +55,8 @@ interface ProvenanceRow {
   fetched_at: Date;
   extraction_method: string | null;
   is_provisional: boolean;
+  retrieval_method: string | null;
+  retrieved_by: string | null;
 }
 
 function mapProvenance(row: ProvenanceRow): Provenance {
@@ -68,6 +70,10 @@ function mapProvenance(row: ProvenanceRow): Provenance {
     fetchedAt: row.fetched_at.toISOString(),
     extractionMethod: (row.extraction_method ?? 'manual_entry') as Provenance['extractionMethod'],
     isProvisional: row.is_provisional,
+    // Defaulting to 'automated' matches the column default: every row written
+    // before this was recorded came from a pipeline fetching a URL.
+    retrievalMethod: (row.retrieval_method ?? 'automated') as Provenance['retrievalMethod'],
+    retrievedBy: row.retrieved_by,
   };
 }
 
@@ -98,7 +104,8 @@ export async function getProvenanceMap(
   if (ids.length === 0) return new Map();
   const rows = await query<ProvenanceRow>(
     `SELECT source_record_id, source_id, source_name, url, artifact_key,
-            document_date, fetched_at, extraction_method, is_provisional
+            document_date, fetched_at, extraction_method, is_provisional,
+            retrieval_method, retrieved_by
      FROM v_provenance
      WHERE source_record_id = ANY($1::BIGINT[])`,
     [ids],

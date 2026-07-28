@@ -3,6 +3,7 @@ import {
   HI_PREFIX,
   LOCALE_COOKIE,
   LOCALE_HEADER,
+  LOCALE_PARAM,
   PATH_HEADER,
   splitLocalePath,
 } from '@/lib/i18n';
@@ -30,6 +31,28 @@ const YEAR_SECONDS = 60 * 60 * 24 * 365;
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const [locale, canonicalPath] = splitLocalePath(pathname);
+
+  // An explicit switch from the language toggle. It has to be distinguishable
+  // from an ordinary visit, because the two want opposite things from the
+  // cookie: a returning Hindi reader arriving at `/` should be sent to `/hi`,
+  // and a reader who has just clicked "English" on `/hi` must not be.
+  //
+  // Without this the toggle was a one-way door. Viewing `/hi` set the cookie,
+  // clicking English navigated to `/`, and the rule below bounced it straight
+  // back to `/hi`. English became unreachable for anyone who had ever read a
+  // Hindi page.
+  const requested = request.nextUrl.searchParams.get(LOCALE_PARAM);
+  if (requested === 'en' || requested === 'hi') {
+    const url = request.nextUrl.clone();
+    url.searchParams.delete(LOCALE_PARAM);
+    const response = NextResponse.redirect(url);
+    response.cookies.set(LOCALE_COOKIE, requested, {
+      path: '/',
+      maxAge: YEAR_SECONDS,
+      sameSite: 'lax',
+    });
+    return response;
+  }
 
   // Returning Hindi reader landing on the bare root. Cookie-driven and so only
   // ever affects real browsers; search engines keep seeing English at `/`.

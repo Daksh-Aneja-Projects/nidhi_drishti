@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { EChartsOption } from 'echarts';
 import { formatINRCompact } from '@nidhi/core';
-import { Chart, axisLabelStyle, baseChartOption, chartTheme } from '@/components/chart';
+import { Chart, axisLabelStyle, baseChartOption, chartTheme, tooltipHtml } from '@/components/chart';
 import { useLocale, useStrings } from '@/components/locale-provider';
 import { localePath } from '@/lib/i18n';
 
@@ -93,18 +93,17 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
       tooltip: {
         ...baseChartOption.tooltip,
         trigger: 'axis',
-        axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(26,21,18,0.05)' } },
+        axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(94,106,210,0.07)' } },
         formatter: (params: unknown) => {
           const list = params as Array<{ name: string }>;
           const row = byLabel.get(list?.[0]?.name ?? '');
           if (!row) return '';
-          return [
-            `<strong>${row.name}</strong>`,
-            `${strings.stage.authority}: ${row.authorityText}`,
-            `${strings.stage.spent}: ${row.spentText}`,
-            `${strings.analysis.tooltipVariance}: ${row.varianceText}`,
-            `${strings.pace.label}: ${row.paceText}`,
-          ].join('<br/>');
+          return tooltipHtml(row.name, [
+            { label: strings.stage.authority, value: row.authorityText, color: chartTheme.ink },
+            { label: strings.stage.spent, value: row.spentText, color: row.color },
+            { label: strings.analysis.tooltipVariance, value: row.varianceText },
+            { label: strings.pace.label, value: row.paceText },
+          ]);
         },
       },
       xAxis: {

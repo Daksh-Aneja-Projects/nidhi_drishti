@@ -3,72 +3,76 @@
 /* ===========================================================================
    Nidhi Drishti design tokens.
 
-   A contemporary data product, not a document from an archive.
+   The reference is Linear's dark interface: dense, quiet, hairline-structured,
+   with one indigo accent and colour spent almost entirely on data.
 
-   The previous system was built from the bahi-khata, the red cloth ledger the
-   Union Budget arrives in. It was coherent and it was the wrong instinct: it
-   dressed a live analytical instrument as a historical artefact, and heritage
-   texture is not the same thing as authority.
+   The ground is a desaturated slate, not black. Near-black backgrounds make
+   thin type shimmer, force every border to be a light grey line that reads as a
+   scratch, and leave no room below the surface for a sunk state. A slate with a
+   slight blue cast gives three usable elevations, lets hairlines sit *above*
+   the surface rather than cutting into it, and keeps large areas of chart
+   background from vibrating against white text.
 
-   What replaces it is restraint plus system. Almost no colour, one accent, a
-   generous type scale that does the hierarchy work, and real but quiet depth.
-   Colour is spent almost entirely on data, because on a page whose whole job is
-   comparison, a coloured mark should mean a quantity and nothing on the chrome
-   should compete with it.
+   Four rules carry the look:
 
-   Two surfaces and a set of neutrals, and that is the whole palette. Everything
-   distinctive comes from typography, spacing and the charts themselves.
+     1. Borders, not shadows. Shadows do not read on a dark ground; a 1px
+        hairline one step lighter than the surface is the separation.
+     2. Small radii. 8px. Large radii read as consumer-friendly, which is the
+        opposite of precise.
+     3. Dense type. A 14px base with tight line height, labels in sentence case
+        at a normal weight rather than wide uppercase tracking.
+     4. One accent, an indigo, used only for interaction. Never for a quantity.
    =========================================================================== */
 
 @theme {
-  /* --- Surfaces. Near white, with the page one step down from the cards that
-         sit on it, so elevation is legible without a heavy shadow. --- */
-  --color-canvas: #f5f5f7;
-  --color-surface: #ffffff;
-  --color-surface-sunk: #eeeef1;
-  --color-surface-inset: #fafafc;
+  /* --- Surfaces. Three elevations on a blue-grey slate. --- */
+  --color-canvas: #14171f;
+  --color-surface: #1a1e28;
+  --color-surface-sunk: #10131a;
+  --color-surface-inset: #1e2330;
 
-  /* Kept as aliases so the whole app does not have to be rewritten in one
-     commit. paper/paper-raised/paper-sunk map onto the new surfaces. */
-  --color-paper: #f5f5f7;
-  --color-paper-raised: #ffffff;
-  --color-paper-sunk: #eeeef1;
+  /* Aliases, so components written against the old names keep working. */
+  --color-paper: #14171f;
+  --color-paper-raised: #1a1e28;
+  --color-paper-sunk: #10131a;
 
-  /* --- Ink. A near black that is not pure black, and two greys under it.
-         All three clear 4.5:1 on both surfaces. --- */
-  --color-ink: #1d1d1f;        /* 16.1:1 on white */
-  --color-ink-soft: #424245;   /*  9.7:1 */
-  --color-ink-faint: #6e6e73;  /*  5.0:1 */
+  /* --- Ink. Never pure white: #ffffff on a dark ground haloes at small sizes.
+         All three clear 4.5:1 against the canvas. --- */
+  --color-ink: #e9ecf2;        /* 14.8:1 */
+  --color-ink-soft: #a3aabb;   /*  7.5:1 */
+  --color-ink-faint: #7f8798;  /*  4.9:1 */
 
-  /* --- Rules. Hairlines, not borders. --- */
-  --color-rule: #e3e3e6;
-  --color-rule-strong: #c7c7cc;
+  /* --- Hairlines. One step lighter than the surface they separate, so they
+         read as an edge rather than as a drawn line. --- */
+  --color-rule: #262b38;
+  --color-rule-strong: #38404f;
 
-  /* --- The one accent. Used for interaction and for nothing else: a link, a
-         focus ring, a selected state. Never for a quantity. --- */
-  --color-accent: #0b62d6;
-  --color-accent-soft: #e7f0fd;
+  /* --- The one accent. Interaction only: a link, a focus ring, a selection.
+         Lifted from Linear's indigo, which needs to be brighter on a dark
+         ground than it is on a light one. --- */
+  --color-accent: #7c8aec;
+  --color-accent-hover: #939fef;
+  --color-accent-soft: #232a45;
 
-  /* --- The pace axis, which is where colour is actually spent. Mirrors
-         BURN_SCALE_STOPS in @nidhi/core. Behind is a deep blue, ahead is a
-         warm amber, and the midpoint is a true neutral because on pace is the
-         reading with nothing to look at. --- */
-  --color-behind: #1c4ed8;
-  --color-behind-soft: #a9c0f5;
-  --color-onpace: #b0b0b8;
-  --color-ahead: #b45309;
-  --color-ahead-soft: #f0c68a;
+  /* --- The pace axis, where colour is actually spent. Mirrors
+         BURN_SCALE_STOPS in @nidhi/core. Behind is a blue kept clearly apart
+         from the indigo accent so a mark is never read as a control; ahead is
+         amber; the midpoint is a true neutral, because on pace is the reading
+         with nothing to look at. --- */
+  --color-behind: #5b93f5;
+  --color-behind-soft: #2f4a7a;
+  --color-onpace: #7e86a0;
+  --color-ahead: #e0a040;
+  --color-ahead-soft: #6d5324;
 
   /* --- Reserved. Provenance and flags, and nothing else. --- */
-  --color-seal: #c2334d;
+  --color-seal: #e4708e;
 
   /* --- Absence. Distinct in hue from the ink so "not reported" never reads as
-         a quantity, and legible, because it is text a reader must be able to
-         read. --- */
-  --color-unreported: #86868b;
+         a quantity, and legible, because it is text a reader must read. --- */
+  --color-unreported: #7e86a0;
 
-  /* --- Type. One grotesque across the interface, mono only for things that
-         genuinely are code. Devanagari falls through to its companion face. --- */
+  /* --- Type. One grotesque, mono only for things that genuinely are code. --- */
   --font-display: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   --font-ui: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
@@ -78,21 +82,21 @@
   --font-data: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   --font-code: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
 
-  /* --- Radius. Soft enough to read as a modern surface, tight enough that a
-         dense table does not look like a toy. --- */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  /* --- Radius. Small and consistent. --- */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
 
-  /* --- Depth. Two levels, both quiet. A wide low-opacity shadow reads as
-         elevation; a dark tight one reads as a sticker. --- */
-  --shadow-raised:
-    0 0 0 1px rgba(0, 0, 0, 0.04),
-    0 1px 2px rgba(0, 0, 0, 0.04);
+  /* --- Depth. On a dark ground a drop shadow is invisible, so elevation is
+         carried by the surface step plus a one-pixel highlight along the top
+         edge, which is how a raised panel catches light. --- */
+  --shadow-raised: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
   --shadow-card:
-    0 0 0 1px rgba(0, 0, 0, 0.045),
-    0 4px 16px -4px rgba(0, 0, 0, 0.06),
-    0 12px 32px -12px rgba(0, 0, 0, 0.08);
+    0 0 0 1px var(--color-rule),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.035);
+  --shadow-overlay:
+    0 0 0 1px var(--color-rule-strong),
+    0 16px 40px -12px rgba(0, 0, 0, 0.65);
 }
 
 /* ---------------------------------------------------------------------------
@@ -100,7 +104,7 @@
    --------------------------------------------------------------------------- */
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html {
@@ -108,11 +112,13 @@ html {
 }
 
 body {
-  background-color: var(--color-paper);
+  background-color: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-ui);
-  font-size: 15px;
-  line-height: 1.55;
+  /* Denser than a content site. This is an instrument that people read tables
+     in, and 15px with loose leading pushes a comparison off the screen. */
+  font-size: 14px;
+  line-height: 1.5;
   /* Ledger figures must align in columns wherever they appear. */
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
@@ -127,7 +133,7 @@ body {
 }
 
 ::selection {
-  background-color: var(--color-accent-soft);
+  background-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   color: var(--color-ink);
 }
 
@@ -148,12 +154,15 @@ body {
    rather than the wide uppercase of a form field. Uppercase at 11px with 0.09em
    tracking is legible but it is also the loudest thing on a quiet page, and it
    was being used for every label on every screen. */
+/* Section labels. Sentence case at a normal weight: wide uppercase tracking is
+   the loudest thing on a quiet page, and it was being applied to every label on
+   every screen. */
 .eyebrow {
   font-family: var(--font-ui);
-  font-size: 11.5px;
-  font-weight: 550;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--color-ink-faint);
 }
 
@@ -230,7 +239,7 @@ body {
    --------------------------------------------------------------------------- */
 
 .cloth {
-  background-color: var(--color-surface);
+  background-color: var(--color-canvas);
   color: var(--color-ink);
   border-bottom: 1px solid var(--color-rule);
 }
@@ -241,7 +250,7 @@ body {
 
 .leaf {
   background-color: var(--color-surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
 }
 

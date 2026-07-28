@@ -84,43 +84,99 @@ async function loadECharts() {
  * globals.css by hand, and a test pins the pair.
  */
 export const chartTheme = {
-  ink: '#1d1d1f',
-  inkSoft: '#424245',
-  inkFaint: '#6e6e73',
-  paper: '#f5f5f7',
-  paperRaised: '#ffffff',
-  paperSunk: '#eeeef1',
-  rule: '#e3e3e6',
-  ruleStrong: '#c7c7cc',
-  behind: '#1c4ed8',
-  behindSoft: '#a9c0f5',
-  ahead: '#b45309',
-  aheadSoft: '#f0c68a',
-  onPace: '#b0b0b8',
-  seal: '#c2334d',
-  brass: '#b45309',
-  unreported: '#86868b',
+  ink: '#e9ecf2',
+  inkSoft: '#a3aabb',
+  inkFaint: '#7f8798',
+  paper: '#14171f',
+  paperRaised: '#1a1e28',
+  paperSunk: '#10131a',
+  rule: '#262b38',
+  ruleStrong: '#38404f',
+  behind: '#5b93f5',
+  behindSoft: '#2f4a7a',
+  ahead: '#e0a040',
+  aheadSoft: '#6d5324',
+  onPace: '#7e86a0',
+  seal: '#e4708e',
+  accent: '#7c8aec',
+  brass: '#e0a040',
+  unreported: '#7e86a0',
 } as const;
 
-/** Shared axis, grid and tooltip styling, spread into every chart option. */
+/**
+ * Shared axis, grid and tooltip styling, spread into every chart.
+ *
+ * The interaction defaults matter as much as the colours. A chart that only
+ * redraws is a picture; a chart that responds under the cursor is an
+ * instrument, and the difference is almost entirely in these few settings:
+ * an axis pointer that tracks precisely, a tooltip that appears without lag
+ * and does not jitter, and an entry animation short enough to read as
+ * responsiveness rather than as decoration.
+ */
 export const baseChartOption: EChartsOption = {
   backgroundColor: 'transparent',
   textStyle: {
     fontFamily: 'var(--font-sans), system-ui, sans-serif',
     color: chartTheme.ink,
   },
+  // Fast, eased, and staggered only slightly. Long chart animations are the
+  // clearest tell of a template dashboard.
+  animationDuration: 420,
+  animationEasing: 'cubicOut',
+  animationDelay: (index: number) => index * 12,
   grid: { left: 8, right: 8, top: 16, bottom: 8, containLabel: true },
   tooltip: {
     backgroundColor: chartTheme.paperRaised,
-    borderColor: chartTheme.ruleStrong,
+    borderColor: chartTheme.rule,
     borderWidth: 1,
-    // Square, like everything else in this system.
-    borderRadius: 10,
-    padding: [8, 10],
-    textStyle: { color: chartTheme.ink, fontSize: 12 },
-    extraCssText: 'box-shadow: 0 8px 28px -8px rgba(0,0,0,0.18); border-radius: 10px;',
+    borderRadius: 8,
+    padding: [10, 12],
+    textStyle: { color: chartTheme.ink, fontSize: 12, fontWeight: 400 },
+    // No transition on the follow, so the tooltip tracks the cursor exactly.
+    transitionDuration: 0.12,
+    confine: true,
+    axisPointer: {
+      type: 'line',
+      lineStyle: { color: chartTheme.ruleStrong, width: 1, type: [4, 4] },
+      crossStyle: { color: chartTheme.ruleStrong },
+      label: { show: false },
+    },
+    extraCssText:
+      'box-shadow: 0 16px 40px -12px rgba(0,0,0,0.65); border-radius: 8px;' +
+      'backdrop-filter: saturate(1.3) blur(8px);',
   },
 };
+
+/**
+ * Tooltip markup shared by every chart.
+ *
+ * Written once because a tooltip is where most of a chart's information
+ * actually gets read, and three charts hand-rolling their own HTML is how a
+ * product ends up with three different ideas of what a label looks like.
+ */
+export function tooltipHtml(
+  title: string,
+  rows: Array<{ label: string; value: string; color?: string }>,
+): string {
+  const head =
+    `<div style="font-weight:600;font-size:12.5px;margin-bottom:6px;` +
+    `max-width:280px;white-space:normal;line-height:1.35">${title}</div>`;
+  const body = rows
+    .map(
+      (row) =>
+        `<div style="display:flex;align-items:center;gap:8px;` +
+        `justify-content:space-between;margin-top:3px">` +
+        `<span style="display:flex;align-items:center;gap:6px;color:${chartTheme.inkFaint}">` +
+        (row.color
+          ? `<span style="width:7px;height:7px;border-radius:2px;background:${row.color}"></span>`
+          : '') +
+        `${row.label}</span>` +
+        `<span style="font-variant-numeric:tabular-nums;font-weight:500">${row.value}</span>` +
+        `</div>`,
+    )
+    .join('');
+  return head + body;
+}
 
 export const axisLabelStyle = {
   color: chartTheme.inkFaint,
@@ -200,7 +256,7 @@ export function Chart({ chartId, option, height = 280, ariaLabel, table, onSelec
     <figure className="m-0">
       <div
         ref={containerRef}
-        style={{ height }}
+        style={{ height, cursor: onSelect ? 'pointer' : 'default' }}
         role="img"
         aria-label={ariaLabel}
         aria-describedby={showTable ? tableId : undefined}

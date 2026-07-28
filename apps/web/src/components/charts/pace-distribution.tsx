@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { EChartsOption } from 'echarts';
-import { Chart, axisLabelStyle, baseChartOption, chartTheme } from '@/components/chart';
+import { Chart, axisLabelStyle, baseChartOption, chartTheme, tooltipHtml } from '@/components/chart';
 import { useLocale, useStrings } from '@/components/locale-provider';
 import { localePath } from '@/lib/i18n';
 
@@ -97,12 +97,11 @@ export function PaceDistribution({ points, parLabel }: PaceDistributionProps) {
           const point = (params as { data: { id: string } }).data;
           const row = byId.get(point.id);
           if (!row) return '';
-          return [
-            `<strong>${row.name}</strong>`,
-            `${strings.stage.authority}: ${row.authorityText}`,
-            `${strings.stage.spent}: ${row.spentText}`,
-            `${strings.pace.label}: ${row.paceText}`,
-          ].join('<br/>');
+          return tooltipHtml(row.name, [
+            { label: strings.stage.authority, value: row.authorityText },
+            { label: strings.stage.spent, value: row.spentText, color: row.color },
+            { label: strings.pace.label, value: row.paceText },
+          ]);
         },
       },
       xAxis: {
@@ -143,9 +142,18 @@ export function PaceDistribution({ points, parLabel }: PaceDistributionProps) {
             opacity: 0.95,
           },
           emphasis: {
-            itemStyle: { borderColor: chartTheme.ink, borderWidth: 2 },
-            scale: 1.08,
+            focus: 'self',
+            scale: 1.14,
+            itemStyle: {
+              borderColor: chartTheme.ink,
+              borderWidth: 2,
+              shadowBlur: 12,
+              shadowColor: 'rgba(0,0,0,0.6)',
+            },
           },
+          // Everything that is not hovered steps back, so a crowded band can be
+          // read one mark at a time instead of as a cloud.
+          blur: { itemStyle: { opacity: 0.22 } },
           data: laid.map((point) => ({
             value: [point.paceRatio, point.row, point.authority],
             id: point.id,

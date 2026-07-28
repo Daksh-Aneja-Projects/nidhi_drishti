@@ -114,6 +114,7 @@ export const strings = {
     colSpent: 'Spent',
     colAbsorption: 'Share spent',
     colVariance: 'Against the line',
+    cumulative: 'Cumulative',
     colPosition: 'Position',
     showAll: 'Show all {count}',
     showFewer: 'Show fewer',
@@ -197,7 +198,7 @@ export const strings = {
   overview: {
     heroEyebrow: 'Union budget',
     treemapTitle: 'Allocation by ministry',
-    treemapHelp: 'Area is the spending authority. Colour is the pace against the calendar.',
+    treemapHelp: 'Bar length is the allocation, on one scale across every row. The fill is spending accounted so far, and the tick is where a straight line through the year would have reached.',
     attentionTitle: 'Worth a look',
     monthlyTitle: 'Monthly expenditure',
     moversTitle: 'Largest movements',

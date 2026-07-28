@@ -20,7 +20,7 @@ import {
   listFlags,
   listMinistrySummaries,
 } from '@nidhi/db';
-import { AllocationTreemap, type TreemapItem } from '@/components/charts/allocation-treemap';
+import { AllocationBullets, type BulletRow } from '@/components/charts/allocation-bullets';
 import { MonthlySpendChart, type MonthlyBar } from '@/components/charts/monthly-spend-chart';
 import { Figure } from '@/components/figure';
 import { HeroPace } from '@/components/hero-pace';
@@ -118,18 +118,28 @@ export default async function OverviewPage({
     );
   }
 
-  const treemapItems: TreemapItem[] = ministries
+  const bulletRows: BulletRow[] = ministries
     .filter((ministry) => isReported(ministry.currentAuthority) && ministry.currentAuthority > 0)
-    .slice(0, 40)
     .map((ministry) => ({
       id: ministry.ministryId,
       name: ministry.name,
-      value: isReported(ministry.currentAuthority) ? ministry.currentAuthority : 0,
+      authority: isReported(ministry.currentAuthority) ? ministry.currentAuthority : 0,
+      spent: isReported(ministry.expenditureToDate) ? ministry.expenditureToDate : null,
       color: burnColor(ministry.burn.burnRatio),
       authorityText: formatINRCr(ministry.currentAuthority),
       spentText: formatINRCr(ministry.expenditureToDate),
-      paceText: BURN_BAND_LABELS[burnBand(ministry.burn.burnRatio)],
+      paceText: isReported(ministry.burn.pctSpent)
+        ? `${ministry.burn.pctSpent.toFixed(0)}% ${strings.pace.spendMarker.toLowerCase()}`
+        : BURN_BAND_LABELS[burnBand(ministry.burn.burnRatio)],
     }));
+
+  // The straight-line tick on every row, as a fraction of the year. Taken from
+  // the date the expenditure figures actually cover, not from today: the
+  // national summary often has no spend figure at all, in which case the
+  // ministries do, and they all share one statement date.
+  const parPercent = [national.burn.pctFyElapsed, ...ministries.map((m) => m.burn.pctFyElapsed)]
+    .find((value) => isReported(value) && value > 0);
+  const parValue = typeof parPercent === 'number' ? parPercent / 100 : null;
 
   const monthlyBars: MonthlyBar[] = monthly.map((point) => ({
     label: point.label,
@@ -203,9 +213,13 @@ export default async function OverviewPage({
             </Link>
           }
         >
-          {treemapItems.length > 0 ? (
+          {bulletRows.length > 0 ? (
             <>
-              <AllocationTreemap items={treemapItems} fy={fy} />
+              <AllocationBullets
+                rows={bulletRows}
+                parFraction={parValue}
+                parLabel={strings.pace.calendarMarker}
+              />
               <PaceLegend className="mt-4" />
             </>
           ) : (

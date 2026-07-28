@@ -62,14 +62,23 @@ export async function PaceTrack({
   // Without an expenditure figure there is no second marker, so the track would
   // be asserting a position it does not have. Say so instead of drawing it.
   if (isNotReported(burn.pctSpent) || burn.pctFyElapsed === 0) {
+    // An empty track, not a hatched slab. Filling the full width with diagonal
+    // stripes made "we cannot compute this" the loudest object on the page,
+    // and a band of hatching reads as a broken image rather than as an absence.
+    // An empty channel with the reason written beside it says the same thing
+    // and stays quiet, which is what an absence should do.
     return (
       <div className={className} role="img" aria-label={strings.pace.unavailable}>
         <div
-          className="hatch w-full text-[color:var(--color-unreported)]"
-          style={{ height, backgroundColor: 'var(--color-paper-sunk)' }}
+          className="w-full rounded-[var(--radius-sm)]"
+          style={{
+            height: isChip ? height : Math.round(height * 0.5),
+            backgroundColor: 'var(--color-paper-sunk)',
+            boxShadow: 'inset 0 0 0 1px var(--color-rule)',
+          }}
         />
         {showReadout && !isChip ? (
-          <p className="mt-1.5 text-xs text-[color:var(--color-ink-faint)]">
+          <p className="mt-2 text-xs text-[color:var(--color-unreported)]">
             {strings.pace.unavailable}
           </p>
         ) : null}

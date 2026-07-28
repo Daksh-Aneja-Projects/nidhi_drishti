@@ -126,6 +126,7 @@ export const strings: Strings = {
     colSpent: 'खर्च',
     colAbsorption: 'खर्च का अंश',
     colVariance: 'रेखा के सापेक्ष',
+    cumulative: 'संचयी',
     colPosition: 'स्थिति',
     showAll: 'सभी {count} दिखाएँ',
     showFewer: 'कम दिखाएँ',
@@ -209,7 +210,7 @@ export const strings: Strings = {
   overview: {
     heroEyebrow: 'केंद्रीय बजट',
     treemapTitle: 'मंत्रालय के अनुसार आवंटन',
-    treemapHelp: 'क्षेत्रफल व्यय प्राधिकार है. रंग कैलेंडर के सापेक्ष गति है.',
+    treemapHelp: 'पट्टी की लंबाई आवंटन है, सभी पंक्तियों में एक ही पैमाने पर. भराव अब तक का व्यय है, और निशान वर्ष की सीधी रेखा है.',
     attentionTitle: 'ध्यान देने योग्य',
     monthlyTitle: 'मासिक व्यय',
     moversTitle: 'सबसे बड़े बदलाव',

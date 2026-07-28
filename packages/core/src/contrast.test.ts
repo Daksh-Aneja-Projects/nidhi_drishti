@@ -14,7 +14,13 @@ import { NOT_REPORTED } from './money';
  * and large text.
  */
 
-const PAPER = '#eff1ee';
+/**
+ * The ground everything is measured against. The interface is a dark slate now,
+ * so a palette validated against light paper is validating nothing: on a dark
+ * ground the contrast maths inverts, and the tones that used to pass are the
+ * ones that vanish.
+ */
+const PAPER = '#14171f';
 
 function channelLuminance(value: number): number {
   const c = value / 255;
@@ -42,12 +48,12 @@ export function contrastRatio(foreground: string, background: string): number {
  * as the check on those values.
  */
 const TEXT_TONES: Record<string, string> = {
-  ink: '#16202b',
-  'ink-soft': '#48555f',
-  'ink-faint': '#5f6b73',
-  unreported: '#666a65',
-  seal: '#9e2b25',
-  behind: '#1f3a6e',
+  ink: '#e9ecf2',
+  'ink-soft': '#a3aabb',
+  'ink-faint': '#7f8798',
+  unreported: '#7e86a0',
+  seal: '#e4708e',
+  behind: '#5b93f5',
 };
 
 describe('text contrast against paper', () => {

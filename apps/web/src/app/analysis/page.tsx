@@ -15,7 +15,8 @@ import {
 } from '@nidhi/core';
 import { listMinistrySummaries } from '@nidhi/db';
 import { PaceDistribution } from '@/components/charts/pace-distribution';
-import { VarianceDumbbell } from '@/components/charts/variance-dumbbell';
+import { VarianceBars } from '@/components/charts/variance-bars';
+import { PaceLegend } from '@/components/pace-track';
 import { PageHeader, PageShell, Section } from '@/components/layout-primitives';
 import { formatFiscalYearLong } from '@/lib/format';
 import { getLocale, getStrings } from '@/lib/i18n-server';
@@ -135,18 +136,19 @@ export default async function AnalysisPage({
               }))}
               parLabel={parLabel}
             />
+            {/* Colour carries the pace on both charts below, so the scale it
+                encodes has to be stated once, near the first chart that uses
+                it. A chart whose colour means something without a legend is a
+                chart the reader has to guess at. */}
+            <PaceLegend className="mt-4" />
           </Section>
 
           <Section title={strings.analysis.title}>
-            <VarianceDumbbell
-              fy={fy}
+            <VarianceBars
               rows={decorated.map((item) => ({
                 id: item.entityId,
                 name: item.name,
-                authority: item.authority,
-                spent: item.spent,
                 varianceCr: item.varianceCr,
-                paceRatio: item.paceRatio,
                 color: item.color,
                 authorityText: item.authorityText,
                 spentText: item.spentText,

@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Languages } from 'lucide-react';
 import { Icon } from '@/components/icon';
 import { useStrings } from '@/components/locale-provider';
-import { localePath, splitLocalePath, type Locale } from '@/lib/i18n';
+import { localePath, LOCALE_PARAM, splitLocalePath, type Locale } from '@/lib/i18n';
 
 /**
  * Language switcher for the site chrome.
@@ -27,10 +27,14 @@ export function LanguageToggle() {
   const searchParams = useSearchParams();
 
   const [active, canonicalPath] = splitLocalePath(pathname ?? '/');
-  const query = searchParams?.toString();
-  const suffix = query ? `?${query}` : '';
-
-  const hrefFor = (locale: Locale) => `${localePath(canonicalPath, locale)}${suffix}`;
+  // Both links carry the choice explicitly. Without it the middleware cannot
+  // tell "this reader wants English" from "this reader has landed on the root",
+  // and the language cookie wins over the click.
+  const hrefFor = (locale: Locale) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.set(LOCALE_PARAM, locale);
+    return `${localePath(canonicalPath, locale)}?${params.toString()}`;
+  };
 
   return (
     <div

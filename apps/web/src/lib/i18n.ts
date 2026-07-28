@@ -28,6 +28,17 @@ export const PATH_HEADER = 'x-nidhi-path';
 /** Cookie recording the reader's last explicit choice. */
 export const LOCALE_COOKIE = 'NEXT_LOCALE';
 
+/**
+ * Query parameter the language toggle uses to say the choice was deliberate.
+ *
+ * The middleware needs to tell an explicit switch apart from an ordinary visit,
+ * because the two want opposite things: a returning Hindi reader arriving at
+ * `/` is sent to `/hi`, and a reader who has just clicked "English" on `/hi`
+ * must not be. It is consumed and stripped by the middleware, so it never
+ * reaches a page or a canonical URL.
+ */
+export const LOCALE_PARAM = 'setlang';
+
 /** BCP-47 tags for the `<html lang>` attribute. Region qualified for India. */
 export const HTML_LANG: Record<Locale, string> = {
   en: 'en-IN',

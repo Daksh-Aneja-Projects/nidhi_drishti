@@ -95,14 +95,28 @@ export function burnDescription(burnRatio: Amount): string {
  * The midpoint is the paper tone, so entities on pace recede into the page and
  * only genuine outliers come forward.
  */
+/**
+ * The pace ramp, tuned for a dark ground.
+ *
+ * On a light background a scale reads by getting darker towards its extremes.
+ * On a dark one that is exactly backwards: the darkest steps sink into the
+ * surface and disappear, so the ends of the scale, which are the readings that
+ * deserve attention, become the least visible thing on the chart. Inverted
+ * here, so the extremes are the brightest and the midpoint is a desaturated
+ * slate that recedes.
+ *
+ * The midpoint receding is the point, not a compromise. On pace is the reading
+ * with nothing to look at, and a chart where two thirds of the tiles are quiet
+ * is a chart whose outliers announce themselves.
+ */
 const BURN_SCALE_STOPS: ReadonlyArray<{ at: number; color: string }> = [
-  { at: 0.0, color: '#16306b' },
-  { at: 0.5, color: '#35569c' },
-  { at: 0.85, color: '#93a6c6' },
-  { at: 1.0, color: '#c9ccc4' },
-  { at: 1.15, color: '#d3b06a' },
-  { at: 1.5, color: '#a8791c' },
-  { at: 2.0, color: '#7a5410' },
+  { at: 0.0, color: '#7fb2ff' },
+  { at: 0.5, color: '#5b93f5' },
+  { at: 0.85, color: '#436fbe' },
+  { at: 1.0, color: '#646b7d' },
+  { at: 1.15, color: '#a8802f' },
+  { at: 1.5, color: '#e0a040' },
+  { at: 2.0, color: '#f3bd68' },
 ];
 
 function hexToRgb(hex: string): [number, number, number] {

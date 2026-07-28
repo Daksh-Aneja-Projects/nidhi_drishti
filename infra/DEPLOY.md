@@ -161,8 +161,18 @@ That migrates, seeds the reference data, ingests the Union Budget from
 indiabudget.gov.in and refreshes the views. It reads a government server, so it
 obeys the same politeness rules as any other run.
 
-**The web app.** Import the repo on Vercel. `vercel.json` at the root already
-sets the build for this monorepo, so the only thing to add is the environment:
+**The web app.** Import the repo on Vercel and set **Root Directory** to
+`apps/web`. Leave the build and install commands on their defaults: Vercel
+detects the pnpm workspace, installs from the repository root, and finds Next.js
+in the app's own package.json. `next.config.ts` already carries the two settings
+a monorepo deploy needs, `transpilePackages` for the workspace packages and
+`outputFileTracingRoot` pointing at the repo root.
+
+Do not add a `vercel.json` that overrides the build from the repository root.
+With the root directory set there, Vercel looks for Next.js in the root
+package.json, does not find it, and fails detection before the build starts.
+
+The only thing to add is the environment:
 
 | Variable | Value |
 |---|---|

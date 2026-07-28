@@ -143,6 +143,44 @@ Vercel for the app, a managed Postgres, an S3-compatible bucket.
 
 ---
 
+## Route C: free, for a public demo
+
+Enough to put a working link in front of people. Two free accounts, no card.
+
+**Postgres.** Create a project on Neon (neon.tech) or Supabase. Copy the
+connection string. The whole database is a few hundred rows, so the free tier is
+not close to a constraint.
+
+**Seed it**, from this repo on your machine:
+
+```bash
+DATABASE_URL='postgres://...' ./scripts/bootstrap-remote.sh
+```
+
+That migrates, seeds the reference data, ingests the Union Budget from
+indiabudget.gov.in and refreshes the views. It reads a government server, so it
+obeys the same politeness rules as any other run.
+
+**The web app.** Import the repo on Vercel. `vercel.json` at the root already
+sets the build for this monorepo, so the only thing to add is the environment:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | the connection string, with `sslmode=require` |
+| `DATA_MODE` | `live` |
+| `NEXT_PUBLIC_SITE_URL` | the deployed URL |
+| `SCRAPER_CONTACT` | an address you read |
+
+Nothing else is required at runtime. The app reads Postgres and nothing else:
+object storage holds the raw artifacts for reprocessing and audit, and Redis is
+only used for API rate limiting, so both are optional for a demo.
+
+**What a visitor will see.** The national and ministry figures are real and
+current. The scheme, signal and state pages are honest empty states, because
+those sources are not ingested yet. The freshness bar says so on every page,
+which is the product working, not a gap to hide. Say so in the post rather than
+letting someone find it.
+
 ## Before making it public
 
 - [ ] `DATA_MODE=live`. In any other mode the site publishes sample figures, and

@@ -1,0 +1,48 @@
+# Build context hygiene. Everything here is either rebuilt inside the image,
+# irrelevant to it, or must never enter it.
+
+.git
+.github
+node_modules
+**/node_modules
+.pnpm-store
+.next
+.next-*
+**/.next
+**/.next-*
+dist
+build
+out
+coverage
+*.tsbuildinfo
+
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Secrets. .env.example is kept: it is documentation.
+.env
+.env.local
+.env.*.local
+
+# Local artifacts and hand-dropped documents. The intake directory structure is
+# recreated by the image; the operator's downloads belong to the host.
+data
+tmp
+.artifacts
+*.log
+.agent-state
+
+# Internal design docs are not published and have no business in an image.
+docs
+!docs/08-legal-compliance.md
+
+.DS_Store
+Thumbs.db
+.idea
+.vscode

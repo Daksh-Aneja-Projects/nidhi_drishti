@@ -100,6 +100,32 @@ The local stack binds shifted ports (Postgres 5433, Redis 6380, MinIO 9002/9003)
 coexists with anything already running rather than silently connecting to the wrong
 database.
 
+### Sources that refuse automated access
+
+Several official portals block automated clients or publish figures that only
+exist after JavaScript runs. We never work around that. For those, a person
+downloads the same public document in a browser and drops it in
+`data/intake/<source_id>/` with a short manifest saying where it came from and
+who fetched it; the ordinary pipeline then ingests it, and every figure it
+produces is labelled on the site as obtained by hand rather than on a schedule.
+See [data/intake/README.md](data/intake/README.md).
+
+```bash
+uv run python -m pipelines intake template data/intake/union_budget/sumsbe.pdf
+uv run python -m pipelines run union_budget --from-intake --dry-run
+```
+
+## Deploying
+
+Two routes, both written up in [infra/DEPLOY.md](infra/DEPLOY.md): a self-hosted
+stack that runs the whole thing on one machine, and a managed split across
+Vercel, a hosted Postgres and an S3 bucket.
+
+```bash
+cp .env.production.example .env.production   # then fill it in
+docker compose -f infra/docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
 ## Commands
 
 | Command | Does |

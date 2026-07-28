@@ -1,0 +1,177 @@
+# Self-hosted production stack: everything the site needs on one machine.
+#
+#     cp .env.production.example .env.production
+#     # edit it: passwords, site URL, contact address
+#     docker compose -f infra/docker-compose.prod.yml --env-file .env.production up -d
+#
+# Nothing here is exposed to the internet directly except the web app's port.
+# Postgres, Redis and the artifact store bind to the loopback interface only, so
+# the machine's firewall is not the single thing standing between a public IP
+# and the database. Put a TLS terminator (Caddy, nginx, a load balancer) in
+# front of the web app; there is no HTTP server in this file that should ever
+# answer a request from the internet without one.
+#
+# For a managed deployment (Vercel, Neon, S3) use only the `migrate` service
+# from here and point it at the managed DATABASE_URL. See infra/DEPLOY.md.
+
+name: nidhi-drishti-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-nidhi}
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      # Loopback only. Remove the host binding entirely once you no longer need
+      # psql from the host.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-nidhi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+
+  redis:
+    # Rate limiting for the public API. Without it the API still serves, with
+    # in-process limits that do not survive a restart or span replicas.
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    # The evidence trail: every fetched document, content-addressed, never
+    # deleted. Losing this bucket does not break the site, but it does break the
+    # ability to prove where a published figure came from.
+    image: minio/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb --ignore-existing local/${S3_BUCKET:-nidhi-raw} &&
+      mc version enable local/${S3_BUCKET:-nidhi-raw} &&
+      echo 'artifact bucket ready'
+      "
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+
+  # One-shot. Migrations are forward-only and checksummed, so running this on
+  # every deploy is safe and running it twice is a no-op.
+  migrate:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      target: build
+    command: sh -c "pnpm --filter @nidhi/db migrate && pnpm --filter @nidhi/db seed"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nidhi}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Compiled into the client bundle, so it is a build argument and not an
+        # environment variable. Changing the site URL means rebuilding.
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nidhi}
+      REDIS_URL: redis://redis:6379
+      DATA_MODE: ${DATA_MODE:-live}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Not started by `up`: pipelines run on a schedule, from the host's cron or a
+  # scheduler, one invocation per source. Start it with
+  #   docker compose -f infra/docker-compose.prod.yml --profile tools run --rm \
+  #     pipelines -m pipelines run cga_monthly
+  pipelines:
+    profiles: ["tools"]
+    build:
+      context: ..
+      dockerfile: Dockerfile.pipelines
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nidhi}
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-nidhi-raw}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_FORCE_PATH_STYLE: "true"
+      DATA_MODE: ${DATA_MODE:-live}
+      OGD_API_KEY: ${OGD_API_KEY:-}
+      SCRAPER_USER_AGENT: ${SCRAPER_USER_AGENT:?set SCRAPER_USER_AGENT with a real contact address}
+      AGENT_PROVIDER: ${AGENT_PROVIDER:-ollama}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      # Documents downloaded by hand on the host, read by the container. Read
+      # only: intake writes nothing back, and a pipeline that could edit the
+      # operator's evidence would undermine the point of keeping it.
+      - ../data/intake:/repo/data/intake:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

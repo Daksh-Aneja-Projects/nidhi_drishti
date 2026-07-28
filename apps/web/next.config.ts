@@ -14,6 +14,16 @@ if (existsSync(rootEnv)) {
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // The container image runs the standalone server, which bundles only the
+  // modules the app actually imports and so does not need node_modules at
+  // runtime. Opt-in via the environment rather than always on: a standalone
+  // build traces and copies dependencies, which is wasted work for the local
+  // dev loop and for CI, and `next start` is unaffected either way.
+  output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
+  // Tracing starts at the app directory by default, which in a monorepo misses
+  // the workspace packages and the root lockfile. Only relevant to a standalone
+  // build; harmless otherwise.
+  outputFileTracingRoot: fileURLToPath(new URL('../..', import.meta.url)),
   // A dev server and a concurrent production build share .next by default and
   // corrupt each other's manifests, which shows up as an unexplained 500 with a
   // missing routes-manifest.json. Setting NEXT_DIST_DIR gives a parallel task

@@ -132,3 +132,35 @@ jobs:
       # fixtures alone, which is also what keeps them fast enough to run often.
       - name: Tests
         run: uv run pytest -q
+
+  images:
+    name: Container images
+    runs-on: ubuntu-latest
+    # A Dockerfile that stopped building is only discovered at deploy time
+    # otherwise, which is the worst moment to discover it. Built, not pushed:
+    # publishing to a registry is the deploying operator's decision and needs
+    # their credentials.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=http://localhost:3000
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Pipelines image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.pipelines
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

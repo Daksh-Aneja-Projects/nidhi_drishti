@@ -22,7 +22,9 @@ uv.lock
 .env
 .env.local
 .env.*.local
+.env.production
 !.env.example
+!.env.production.example
 
 # Local data & artifacts
 /data/*

@@ -68,7 +68,7 @@ export function StageBars({ chartId, stages, ariaLabel }: StageBarsProps) {
         data: stages.map((stage) => stage.label),
         axisLine: { lineStyle: { color: chartTheme.ruleStrong } },
         axisTick: { show: false },
-        axisLabel: { ...axisLabelStyle, fontFamily: 'var(--font-plex-sans), sans-serif' },
+        axisLabel: { ...axisLabelStyle, fontFamily: 'var(--font-sans), sans-serif' },
       },
       series: [
         {
@@ -84,7 +84,7 @@ export function StageBars({ chartId, stages, ariaLabel }: StageBarsProps) {
             show: true,
             position: 'right',
             distance: 8,
-            fontFamily: 'var(--font-plex-mono), monospace',
+            fontFamily: 'var(--font-sans), system-ui, sans-serif',
             fontSize: 12,
             color: chartTheme.ink,
             formatter: (params: { value: unknown }) =>

@@ -91,7 +91,7 @@ export function AllocationTreemap({ items, fy, height = 460 }: AllocationTreemap
           },
           label: {
             show: true,
-            fontFamily: 'var(--font-plex-sans), system-ui, sans-serif',
+            fontFamily: 'var(--font-sans), system-ui, sans-serif',
             fontSize: 11,
             lineHeight: 14,
             overflow: 'break',

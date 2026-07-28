@@ -217,11 +217,6 @@ function Headline({
 }) {
   return (
     <section className="leaf relative my-6 overflow-hidden">
-      <span
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-[3px]"
-        style={{ backgroundColor: 'var(--color-brass)' }}
-      />
       <div className="grid gap-x-10 gap-y-6 px-5 py-7 sm:px-8 md:grid-cols-2">
         <div>
           <p className="eyebrow mb-1.5">

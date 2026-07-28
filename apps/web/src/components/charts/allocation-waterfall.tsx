@@ -139,7 +139,7 @@ export function AllocationWaterfall({
               columns[params.dataIndex]?.valueText ?? '',
             color: chartTheme.inkSoft,
             fontSize: 10,
-            fontFamily: 'var(--font-plex-mono), monospace',
+            fontFamily: 'var(--font-sans), system-ui, sans-serif',
           },
         },
         {

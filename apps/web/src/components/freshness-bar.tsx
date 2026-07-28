@@ -40,15 +40,15 @@ export async function FreshnessBar({ sources }: { sources: SourceFreshness[] }) 
   return (
     // Still the binding: freshness qualifies the document rather than being
     // part of it, so it stays on the cloth, one shade deeper than the header.
-    <div className="cloth" style={{ backgroundColor: 'var(--color-cloth-deep)' }}>
-      <div className="mx-auto flex max-w-[90rem] flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2 text-xs text-[color:var(--color-on-cloth-faint)] sm:px-6">
-        <span className="eyebrow text-[color:var(--color-brass-soft)]">{strings.freshness.title}</span>
+    <div className="border-b border-[color:var(--color-rule)] bg-[color:var(--color-canvas)]">
+      <div className="mx-auto flex max-w-[90rem] flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2 text-xs text-[color:var(--color-ink-faint)] sm:px-6">
+        <span className="eyebrow text-[color:var(--color-ink-faint)]">{strings.freshness.title}</span>
 
         <Meter reporting={reporting.length} total={primary.length} />
 
         <Link
           href="/sources"
-          className="text-[color:var(--color-on-cloth)] underline decoration-[color:var(--color-brass)] underline-offset-2 hover:decoration-[color:var(--color-on-cloth)]"
+          className="text-[color:var(--color-ink)] underline decoration-[color:var(--color-rule-strong)] underline-offset-2 hover:decoration-[color:var(--color-accent)]"
         >
           {strings.freshness.reportingCount
             .replace('{reporting}', String(reporting.length))
@@ -58,7 +58,7 @@ export async function FreshnessBar({ sources }: { sources: SourceFreshness[] }) 
         {newest ? (
           <span>
             {strings.freshness.newestDocument}{' '}
-            <span className="figure text-[color:var(--color-on-cloth)]">
+            <span className="figure text-[color:var(--color-ink)]">
               {formatIstDateShort(newest, locale)}
             </span>
           </span>
@@ -75,7 +75,7 @@ export async function FreshnessBar({ sources }: { sources: SourceFreshness[] }) 
         )}
 
         {reporting.length > 0 && current.length < reporting.length ? (
-          <span className="text-[color:var(--color-brass-soft)]">
+          <span className="text-[color:var(--color-ink-faint)]">
             {strings.freshness.overdueCount.replace(
               '{count}',
               String(reporting.length - current.length),
@@ -106,8 +106,8 @@ function Meter({ reporting, total }: { reporting: number; total: number }) {
           key={index}
           className={
             index < reporting
-              ? 'h-3 w-[3px] bg-[color:var(--color-brass)]'
-              : 'h-3 w-[3px] bg-[color:var(--color-on-cloth)] opacity-25'
+              ? 'h-3 w-[3px] bg-[color:var(--color-ink)]'
+              : 'h-3 w-[3px] bg-[color:var(--color-rule-strong)]'
           }
         />
       ))}
@@ -119,7 +119,7 @@ function SourceMention({ source, locale }: { source: SourceFreshness; locale: Lo
   return (
     <span className="flex items-baseline gap-1.5">
       <span>{source.name}</span>
-      <span className="figure text-[color:var(--color-on-cloth)]">
+      <span className="figure text-[color:var(--color-ink)]">
         {formatAge(source.hoursSinceFetch, locale)}
       </span>
     </span>

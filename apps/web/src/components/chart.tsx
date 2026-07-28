@@ -84,29 +84,29 @@ async function loadECharts() {
  * globals.css by hand, and a test pins the pair.
  */
 export const chartTheme = {
-  ink: '#1a1512',
-  inkSoft: '#4a423c',
-  inkFaint: '#625950',
-  paper: '#ecebe6',
-  paperRaised: '#fbfaf7',
-  paperSunk: '#e2e0d8',
-  rule: '#d3d0c6',
-  ruleStrong: '#a29a8c',
-  behind: '#223a63',
-  behindSoft: '#93a3bd',
-  ahead: '#a8791c',
-  aheadSoft: '#d3b06a',
-  onPace: '#b4b0a4',
-  seal: '#9e2b25',
-  brass: '#b98b34',
-  unreported: '#9d968c',
+  ink: '#1d1d1f',
+  inkSoft: '#424245',
+  inkFaint: '#6e6e73',
+  paper: '#f5f5f7',
+  paperRaised: '#ffffff',
+  paperSunk: '#eeeef1',
+  rule: '#e3e3e6',
+  ruleStrong: '#c7c7cc',
+  behind: '#1c4ed8',
+  behindSoft: '#a9c0f5',
+  ahead: '#b45309',
+  aheadSoft: '#f0c68a',
+  onPace: '#b0b0b8',
+  seal: '#c2334d',
+  brass: '#b45309',
+  unreported: '#86868b',
 } as const;
 
 /** Shared axis, grid and tooltip styling, spread into every chart option. */
 export const baseChartOption: EChartsOption = {
   backgroundColor: 'transparent',
   textStyle: {
-    fontFamily: 'var(--font-plex-sans), system-ui, sans-serif',
+    fontFamily: 'var(--font-sans), system-ui, sans-serif',
     color: chartTheme.ink,
   },
   grid: { left: 8, right: 8, top: 16, bottom: 8, containLabel: true },
@@ -115,17 +115,17 @@ export const baseChartOption: EChartsOption = {
     borderColor: chartTheme.ruleStrong,
     borderWidth: 1,
     // Square, like everything else in this system.
-    borderRadius: 2,
+    borderRadius: 10,
     padding: [8, 10],
     textStyle: { color: chartTheme.ink, fontSize: 12 },
-    extraCssText: 'box-shadow: 0 4px 16px rgba(22,32,43,0.12);',
+    extraCssText: 'box-shadow: 0 8px 28px -8px rgba(0,0,0,0.18); border-radius: 10px;',
   },
 };
 
 export const axisLabelStyle = {
   color: chartTheme.inkFaint,
   fontSize: 11,
-  fontFamily: 'var(--font-plex-mono), monospace',
+  fontFamily: 'var(--font-sans), system-ui, sans-serif',
 } as const;
 
 interface ChartProps {

@@ -32,12 +32,12 @@ export function FyPicker({ fy, available }: { fy: FiscalYear; available: FiscalY
 
   return (
     <label className="flex items-center gap-2">
-      <span className="eyebrow text-[color:var(--color-brass-soft)]">{strings.common.fiscalYear}</span>
+      <span className="eyebrow text-[color:var(--color-ink-faint)]">{strings.common.fiscalYear}</span>
       <select
         value={fy}
         onChange={(event) => onChange(event.target.value)}
         aria-label={strings.common.fiscalYear}
-        className="figure cursor-pointer border border-[color:var(--color-brass)] bg-[color:var(--color-paper-raised)] px-2 py-1 text-[13px] text-[color:var(--color-ink)]"
+        className="figure cursor-pointer border border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper-raised)] px-2 py-1 text-[13px] text-[color:var(--color-ink)]"
       >
         {available.map((year) => (
           <option key={year} value={year}>

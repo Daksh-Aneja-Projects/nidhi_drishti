@@ -3,107 +3,96 @@
 /* ===========================================================================
    Nidhi Drishti design tokens.
 
-   The bahi-khata, not the broadsheet.
+   A contemporary data product, not a document from an archive.
 
-   Since 2019 the Union Budget has arrived in Parliament wrapped in red cloth,
-   in place of the colonial despatch box: a bahi-khata, the ledger of the Indian
-   trading house. That object is the whole design. Its two materials become the
-   two surfaces of the interface, and they do different jobs:
+   The previous system was built from the bahi-khata, the red cloth ledger the
+   Union Budget arrives in. It was coherent and it was the wrong instinct: it
+   dressed a live analytical instrument as a historical artefact, and heritage
+   texture is not the same thing as authority.
 
-     the cloth   is chrome. Navigation, identity, the fiscal year, freshness.
-                 Saturated lac crimson with a brass thread. It frames and it
-                 never carries a figure.
-     the leaf    is content. Every rupee, every chart, every citation, on a
-                 cool paper white inset into the cloth with a real edge.
+   What replaces it is restraint plus system. Almost no colour, one accent, a
+   generous type scale that does the hierarchy work, and real but quiet depth.
+   Colour is spent almost entirely on data, because on a page whose whole job is
+   comparison, a coloured mark should mean a quantity and nothing on the chrome
+   should compete with it.
 
-   Keeping money off the crimson is a legibility decision before an aesthetic
-   one: these figures get screenshotted into articles, and a number has to
-   survive being cropped out of its page.
-
-   Brass is reserved for measurement, the way a rule or a plumb line is brass on
-   an instrument. Vermilion is reserved for provenance and flags. Neither ever
-   decorates.
-
-   Deliberately a single light theme. This is a document, and a citable figure
-   should look the same to everyone who screenshots it.
+   Two surfaces and a set of neutrals, and that is the whole palette. Everything
+   distinctive comes from typography, spacing and the charts themselves.
    =========================================================================== */
 
 @theme {
-  /* --- The cloth. Chrome only, and it is the one saturated field on screen,
-         so everything it wraps has to be quiet enough to survive it. --- */
-  --color-cloth: #5e1614;
-  --color-cloth-deep: #400f0e;
-  --color-cloth-soft: #7a2320;
-  /* Type set on the cloth. 8.9:1 and 4.6:1 against --color-cloth. */
-  --color-on-cloth: #f7ece4;
-  --color-on-cloth-faint: #d7ab9e;
+  /* --- Surfaces. Near white, with the page one step down from the cards that
+         sit on it, so elevation is legible without a heavy shadow. --- */
+  --color-canvas: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-sunk: #eeeef1;
+  --color-surface-inset: #fafafc;
 
-  /* --- Brass. The thread in the binding, and every mark that measures. --- */
-  --color-brass: #b98b34;
-  --color-brass-soft: #d8b877;
+  /* Kept as aliases so the whole app does not have to be rewritten in one
+     commit. paper/paper-raised/paper-sunk map onto the new surfaces. */
+  --color-paper: #f5f5f7;
+  --color-paper-raised: #ffffff;
+  --color-paper-sunk: #eeeef1;
 
-  /* --- Surfaces. The paper leaf. Warm enough to read as paper against the
-         cloth, cool enough that it is not the cream every other site uses. --- */
-  --color-paper: #ecebe6;
-  --color-paper-raised: #fbfaf7;
-  --color-paper-sunk: #e2e0d8;
+  /* --- Ink. A near black that is not pure black, and two greys under it.
+         All three clear 4.5:1 on both surfaces. --- */
+  --color-ink: #1d1d1f;        /* 16.1:1 on white */
+  --color-ink-soft: #424245;   /*  9.7:1 */
+  --color-ink-faint: #6e6e73;  /*  5.0:1 */
 
-  /* --- Ink. Warm near-black: this belongs to paper, not to a screen.
-         Every one of these clears 4.5:1 against paper. `faint` is the eyebrow
-         label tone, which is small and appears on every screen, so it is the
-         one most easily pushed too light: at #6f7c85 it measured 3.77:1 and
-         failed. --- */
-  --color-ink: #1a1512;        /* 15.1:1 */
-  --color-ink-soft: #4a423c;   /*  7.4:1 */
-  --color-ink-faint: #625950;  /*  5.2:1 */
+  /* --- Rules. Hairlines, not borders. --- */
+  --color-rule: #e3e3e6;
+  --color-rule-strong: #c7c7cc;
 
-  /* --- Rules. The ledger's own lines. --- */
-  --color-rule: #d3d0c6;
-  --color-rule-strong: #a29a8c;
+  /* --- The one accent. Used for interaction and for nothing else: a link, a
+         focus ring, a selected state. Never for a quantity. --- */
+  --color-accent: #0b62d6;
+  --color-accent-soft: #e7f0fd;
 
-  /* --- The pace axis. Mirrors BURN_SCALE_STOPS in @nidhi/core exactly.
-         Behind is ink, ahead is brass, and the midpoint is a stone that is
-         deliberately unremarkable: on pace is the case with nothing to look at,
-         and colouring it would invent a finding. It is darkened from the old
-         #c9ccc4 only far enough to hold an edge against the leaf, because the
-         commonest reading should still be visible as a reading. --- */
-  --color-behind: #223a63;
-  --color-behind-soft: #93a3bd;
-  --color-onpace: #b4b0a4;
-  --color-ahead: #a8791c;
-  --color-ahead-soft: #d3b06a;
+  /* --- The pace axis, which is where colour is actually spent. Mirrors
+         BURN_SCALE_STOPS in @nidhi/core. Behind is a deep blue, ahead is a
+         warm amber, and the midpoint is a true neutral because on pace is the
+         reading with nothing to look at. --- */
+  --color-behind: #1c4ed8;
+  --color-behind-soft: #a9c0f5;
+  --color-onpace: #b0b0b8;
+  --color-ahead: #b45309;
+  --color-ahead-soft: #f0c68a;
 
-  /* --- Reserved. Vermilion marks provenance and flags, and nothing else.
-         The moment it starts decorating, it stops meaning anything. --- */
-  --color-seal: #9e2b25;
+  /* --- Reserved. Provenance and flags, and nothing else. --- */
+  --color-seal: #c2334d;
 
-  /* --- Absence. A neutral grey, distinct in hue from the blue-black ink, so
-         "not reported" never reads as a quantity.
-         It is muted, but "Not reported" is meaningful text a reader must be
-         able to read, so it carries a text-legible 4.79:1 rather than the
-         near-invisible grey the idea of "absent" invites. Absence is
-         communicated by hue and by hatching, not by being hard to see. --- */
-  --color-unreported: #666a65;
+  /* --- Absence. Distinct in hue from the ink so "not reported" never reads as
+         a quantity, and legible, because it is text a reader must be able to
+         read. --- */
+  --color-unreported: #86868b;
 
-  /* --- Type. IBM Plex across three roles. Devanagari is a sibling Plex face
-         (--font-plex-devanagari) appended to every stack, so a Latin glyph is
-         drawn from the role font and a Devanagari glyph on the Hindi interface
-         falls through to the same design language rather than a system face. --- */
-  --font-display: var(--font-plex-condensed), "IBM Plex Sans Condensed", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-plex-serif), "IBM Plex Serif", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-serif, Georgia, serif;
-  --font-data: var(--font-plex-mono), "IBM Plex Mono", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-monospace, "SFMono-Regular", monospace;
-  --font-ui: var(--font-plex-sans), "IBM Plex Sans", var(--font-plex-devanagari), "IBM Plex Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  /* --- Type. One grotesque across the interface, mono only for things that
+         genuinely are code. Devanagari falls through to its companion face. --- */
+  --font-display: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  /* Figures are Inter with tabular numerals, not monospace. A column aligns
+     because the numerals are tabular; setting money in mono made the product
+     look like a terminal, which is not the same as looking precise. */
+  --font-data: var(--font-sans), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
 
-  /* --- Radius. Forms and stamps are not rounded. 2px is the whole budget. --- */
-  --radius-sm: 2px;
-  --radius-md: 2px;
+  /* --- Radius. Soft enough to read as a modern surface, tight enough that a
+         dense table does not look like a toy. --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
 
-  --shadow-raised: 0 1px 0 0 var(--color-rule);
-  /* A leaf sits *in* the binding, so it casts into it rather than floating
-     above the page the way a card does. */
-  --shadow-leaf:
-    0 0 0 1px var(--color-rule),
-    0 18px 40px -28px rgba(26, 21, 18, 0.55);
+  /* --- Depth. Two levels, both quiet. A wide low-opacity shadow reads as
+         elevation; a dark tight one reads as a sticker. --- */
+  --shadow-raised:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card:
+    0 0 0 1px rgba(0, 0, 0, 0.045),
+    0 4px 16px -4px rgba(0, 0, 0, 0.06),
+    0 12px 32px -12px rgba(0, 0, 0, 0.08);
 }
 
 /* ---------------------------------------------------------------------------
@@ -132,12 +121,13 @@ body {
 /* Visible keyboard focus everywhere, in the reserved seal colour so it is
    never confused with a value. */
 :focus-visible {
-  outline: 2px solid var(--color-seal);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 ::selection {
-  background-color: var(--color-behind-soft);
+  background-color: var(--color-accent-soft);
   color: var(--color-ink);
 }
 
@@ -145,28 +135,42 @@ body {
    Type roles
    --------------------------------------------------------------------------- */
 
+/* Display type. Tracking tightens as size grows, which is the single thing
+   that most separates a considered type scale from a default one: a grotesque
+   set at 64px with default tracking looks loose and unresolved. */
 .font-display {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.021em;
 }
 
-/* Small uppercase labels, the vernacular of a government form field. */
+/* Section and label text. Sentence case at a small size with a little tracking,
+   rather than the wide uppercase of a form field. Uppercase at 11px with 0.09em
+   tracking is legible but it is also the loudest thing on a quiet page, and it
+   was being used for every label on every screen. */
 .eyebrow {
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.045em;
   text-transform: uppercase;
   color: var(--color-ink-faint);
 }
 
-/* Every rupee figure. Mono reads as "accounted", which is the claim we are
-   making about these numbers. */
+/* Every rupee figure. Inter with tabular numerals: a column aligns because the
+   numerals are tabular, not because the letters are monospaced. */
 .figure {
   font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  font-feature-settings: "tnum" 1, "cv05" 1;
+  letter-spacing: -0.015em;
+}
+
+/* Hashes, artifact keys, source ids. The things that genuinely are code. */
+.code {
+  font-family: var(--font-code);
+  font-size: 0.92em;
+  letter-spacing: 0;
 }
 
 .prose-civic {
@@ -181,7 +185,7 @@ body {
 }
 
 .prose-civic a {
-  color: var(--color-behind);
+  color: var(--color-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -217,44 +221,28 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
-   The cloth and the leaf.
+   Chrome and cards.
 
-   The binding is woven, so it gets a weave rather than a flat fill: two
-   crossed hairline gradients at a very low contrast. It reads as texture at
-   arm's length and disappears at reading distance, which is what a background
-   should do.
+   `cloth` and `leaf` are kept as names so the components that use them do not
+   all have to change at once, but they mean something different now: chrome is
+   a plain surface separated by a hairline, and a card is a white panel with a
+   quiet shadow. Nothing is textured and nothing is coloured.
    --------------------------------------------------------------------------- */
 
 .cloth {
-  background-color: var(--color-cloth);
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.028) 0px,
-      rgba(255, 255, 255, 0.028) 1px,
-      transparent 1px,
-      transparent 3px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.035) 0px,
-      rgba(0, 0, 0, 0.035) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-  color: var(--color-on-cloth);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-rule);
 }
 
-/* The brass thread that finishes the binding. One hairline, never a gradient
-   bar: it is a thread, not a highlight. */
 .thread-bottom {
-  box-shadow: inset 0 -1px 0 0 var(--color-brass);
+  box-shadow: none;
 }
 
-/* A page lying in the open binding. */
 .leaf {
-  background-color: var(--color-paper-raised);
-  box-shadow: var(--shadow-leaf);
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
 }
 
 /* ---------------------------------------------------------------------------

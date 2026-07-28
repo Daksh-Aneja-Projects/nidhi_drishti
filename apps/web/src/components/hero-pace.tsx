@@ -46,13 +46,6 @@ export async function HeroPace({
     // The headline sits on its own leaf, lifted out of the page: this is the
     // object people screenshot, and it should crop cleanly at its own edge.
     <section className="leaf relative overflow-hidden">
-      {/* The binding edge. A brass rule down the spine side, which is where a
-          ledger is sewn, so the leaf reads as bound rather than floating. */}
-      <span
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-[3px]"
-        style={{ backgroundColor: 'var(--color-brass)' }}
-      />
       <div className="grid gap-x-12 gap-y-8 px-5 py-8 sm:px-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div>
           <p className="eyebrow mb-2">{strings.stage.authority}</p>

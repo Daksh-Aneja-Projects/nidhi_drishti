@@ -1,69 +1,51 @@
-import {
-  IBM_Plex_Mono,
-  IBM_Plex_Sans,
-  IBM_Plex_Sans_Condensed,
-  IBM_Plex_Sans_Devanagari,
-  IBM_Plex_Serif,
-} from 'next/font/google';
+import { Inter, JetBrains_Mono, Noto_Sans_Devanagari } from 'next/font/google';
 
 /**
- * Three type roles, one superfamily.
+ * One family carries the interface, and it is a contemporary grotesque.
  *
- * Condensed sans for headings and labels, borrowed from the vernacular of
- * government forms where column width is scarce. Serif for prose, which is what
- * the methodology pages and the AI narratives are. Mono for every rupee figure,
- * because tabular figures have to align down a column and because mono reads as
- * "accounted", which is precisely the claim being made about these numbers.
+ * The previous pairing was IBM Plex across four roles, chosen for the vernacular
+ * of a government form: condensed headings, a serif for prose, mono on every
+ * figure. It was coherent and it read as a document from an archive.
  *
- * Plex rather than a more fashionable pairing because the family reaches
- * Devanagari for the Hindi interface (docs/07). Devanagari ships as a sibling
- * Plex face rather than as a subset of the Latin cuts, so it is loaded here as
- * `plexDevanagari` and appended to every role's font stack in globals.css: a
- * Latin glyph is drawn from the role font, a Devanagari glyph falls through to
- * the same Plex design language rather than to a mismatched system face.
+ * Inter instead, for the reasons a modern data product uses it. It was drawn for
+ * screens at small sizes, it holds together from a 12px table label to a 72px
+ * headline, and it ships genuine tabular figures. That last point is what lets
+ * the money leave monospace: a column of rupee figures aligns because the
+ * numerals are tabular, not because the letters are. Setting every figure in
+ * mono made the product look like a terminal, which is not the same as looking
+ * precise.
+ *
+ * Mono is kept for the things that genuinely are code: artifact keys, hashes and
+ * source identifiers. JetBrains Mono rather than Plex Mono because it sits
+ * better beside Inter at the same optical size.
+ *
+ * Devanagari is Noto Sans Devanagari, the companion Google drew for exactly this
+ * pairing. Appended after Inter in every stack, so a Latin glyph is drawn from
+ * Inter and a Devanagari glyph on the Hindi interface falls through to a face
+ * designed to sit with it rather than to a mismatched system font.
  */
 
-export const plexSans = IBM_Plex_Sans({
+export const sans = Inter({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-plex-sans',
+  // Variable, so the type scale can use weight as a real axis rather than
+  // stepping between three static cuts.
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
   display: 'swap',
 });
 
-export const plexCondensed = IBM_Plex_Sans_Condensed({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-plex-condensed',
-  display: 'swap',
-});
-
-export const plexSerif = IBM_Plex_Serif({
+export const mono = JetBrains_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],
-  variable: '--font-plex-serif',
+  variable: '--font-mono',
   display: 'swap',
 });
 
-export const plexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-plex-mono',
-  display: 'swap',
-});
-
-// Devanagari coverage for the Hindi interface. Appended after each role font in
-// the CSS stacks, so it only renders the glyphs the Latin cuts cannot.
-export const plexDevanagari = IBM_Plex_Sans_Devanagari({
+export const devanagari = Noto_Sans_Devanagari({
   subsets: ['devanagari', 'latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-plex-devanagari',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-devanagari',
   display: 'swap',
 });
 
-export const fontVariables = [
-  plexSans.variable,
-  plexCondensed.variable,
-  plexSerif.variable,
-  plexMono.variable,
-  plexDevanagari.variable,
-].join(' ');
+export const fontVariables = [sans.variable, mono.variable, devanagari.variable].join(' ');

@@ -122,7 +122,7 @@ export function VarianceDumbbell({ rows, fy, limit = 15 }: VarianceDumbbellProps
         data: names,
         axisLabel: {
           ...axisLabelStyle,
-          fontFamily: 'var(--font-plex-sans), system-ui, sans-serif',
+          fontFamily: 'var(--font-sans), system-ui, sans-serif',
           // Wide enough for the department names the budget actually uses.
           // Truncating them to "Ministry of Consumer Affair..." makes the axis
           // unreadable exactly where the largest gaps are.

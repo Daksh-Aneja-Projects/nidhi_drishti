@@ -166,7 +166,7 @@ export function PaceDistribution({ points, parLabel }: PaceDistributionProps) {
               // a mark and never gets clipped by the top of the canvas.
               position: 'start',
               distance: 8,
-              fontFamily: 'var(--font-plex-sans), system-ui, sans-serif',
+              fontFamily: 'var(--font-sans), system-ui, sans-serif',
             },
             data: [{ xAxis: 1 }],
           },

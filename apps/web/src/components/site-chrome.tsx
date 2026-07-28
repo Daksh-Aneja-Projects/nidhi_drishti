@@ -39,11 +39,11 @@ export async function SiteHeader({
     <header className="cloth thread-bottom">
       <div className="mx-auto flex max-w-[90rem] flex-wrap items-center gap-x-8 gap-y-3 px-4 py-3.5 sm:px-6">
         <Link href="/" className="group flex items-baseline gap-2.5">
-          <span className="font-display text-[19px] uppercase leading-none tracking-[0.16em] text-[color:var(--color-on-cloth)]">
+          <span className="font-display text-[19px] uppercase leading-none tracking-[0.16em] text-[color:var(--color-ink)]">
             {strings.site.name}
           </span>
           <span
-            className="text-sm text-[color:var(--color-on-cloth-faint)]"
+            className="text-sm text-[color:var(--color-ink-faint)]"
             lang="hi"
             aria-hidden="true"
           >
@@ -60,7 +60,7 @@ export async function SiteHeader({
                   // Underline on hover rather than a colour shift: on a
                   // saturated ground a colour change reads as a different
                   // state, and these are all the same kind of thing.
-                  className="text-[13px] text-[color:var(--color-on-cloth-faint)] underline-offset-[6px] transition-colors hover:text-[color:var(--color-on-cloth)] hover:underline hover:decoration-[color:var(--color-brass)]"
+                  className="text-[13px] text-[color:var(--color-ink-faint)] underline-offset-[6px] transition-colors hover:text-[color:var(--color-ink)] hover:underline hover:decoration-[color:var(--color-accent)]"
                 >
                   {link.label}
                 </Link>

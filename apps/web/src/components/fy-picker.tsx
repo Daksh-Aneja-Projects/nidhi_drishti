@@ -21,10 +21,22 @@ export function FyPicker({ fy, available }: { fy: FiscalYear; available: FiscalY
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // The year the page is actually rendering, read from the URL.
+  //
+  // The prop cannot supply it: this sits in the root layout, and a Next root
+  // layout is not given the query string, so the server can only ever pass the
+  // site default. That left the picker reading FY2024 on a page showing FY2027,
+  // which is worse than no picker at all, because a reader trusts the control
+  // that says which year they are looking at.
+  const requested = searchParams.get('fy');
+  const active = requested && available.includes(requested as FiscalYear)
+    ? (requested as FiscalYear)
+    : fy;
+
   if (available.length <= 1) return null;
 
   function onChange(next: string) {
-    track('fy_changed', { from: fy, to: next });
+    track('fy_changed', { from: active, to: next });
     const params = new URLSearchParams(searchParams.toString());
     params.set('fy', next);
     router.push(`${pathname}?${params.toString()}`);
@@ -34,7 +46,7 @@ export function FyPicker({ fy, available }: { fy: FiscalYear; available: FiscalY
     <label className="flex items-center gap-2">
       <span className="eyebrow text-[color:var(--color-ink-faint)]">{strings.common.fiscalYear}</span>
       <select
-        value={fy}
+        value={active}
         onChange={(event) => onChange(event.target.value)}
         aria-label={strings.common.fiscalYear}
         className="figure cursor-pointer border border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper-raised)] px-2 py-1 text-[13px] text-[color:var(--color-ink)]"

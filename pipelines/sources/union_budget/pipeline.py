@@ -42,6 +42,7 @@ from pipelines.parsers.pdf_table import (
     is_total_row,
     rows_to_records,
 )
+from pipelines.parsers.sbe_workbook import parse_workbook
 from pipelines.parsers.text_norm import clean_cell, normalise_org_name
 from pipelines.sources._common import RunOutcome
 
@@ -49,11 +50,20 @@ log = structlog.get_logger(__name__)
 
 SOURCE_ID = "union_budget"
 
+#: The national aggregate's entity id, matching NATIONAL_ENTITY_ID in
+#: packages/core.
+NATIONAL_ENTITY_ID = "india"
+
 #: Entry points. The budget portal republishes under a new year path each
 #: February and retires the old one, so these are formatted per year where the
 #: portal's own scheme allows it and left as landing pages where it does not.
 URLS: dict[str, str] = {
     "home": "https://www.indiabudget.gov.in/",
+    # The whole Expenditure Budget as one workbook, one sheet per demand. This
+    # is the primary entry point: it is the publisher's own spreadsheet, so the
+    # figures arrive as numbers rather than as text recovered from a PDF table
+    # with no ruling lines.
+    "statements_workbook": "https://www.indiabudget.gov.in/doc/eb/allsbe.xlsx",
     # Expenditure Budget: statements of budget estimates for every demand.
     "expenditure_budget": "https://www.indiabudget.gov.in/doc/eb/allsbe.pdf",
     # Summary of the same, ministry-wise, which is the table this module wants.
@@ -62,6 +72,34 @@ URLS: dict[str, str] = {
     "budget_at_a_glance": "https://www.indiabudget.gov.in/doc/bag/bag1.pdf",
     "documents_index": "https://www.indiabudget.gov.in/doc/eb/allsbe.pdf",
 }
+
+#: Demands that are not a ministry or a department.
+#:
+#: These receive a grant and spend public money, but they are not part of the
+#: ministry breakdown: interest payments alone are fourteen lakh crore, and
+#: folding them into a league table of departments would make every comparison
+#: on the site meaningless. Together with transfers to states they are most of
+#: the residual the national page already explains.
+#:
+#: Keyed on the normalised demand name rather than the demand number, because
+#: the numbering is renewed each year and a number that means Pensions in one
+#: budget means something else in the next.
+NON_MINISTRY_DEMANDS: frozenset[str] = frozenset(
+    {
+        "direct taxes",
+        "indirect taxes",
+        "indian audit and accounts department",
+        "interest payments",
+        "pensions",
+        "transfers to states",
+        "repayment of debt",
+        "staff household and allowances of the president",
+        "lok sabha",
+        "rajya sabha",
+        "secretariat of the vice president",
+        "union public service commission",
+    }
+)
 
 #: Column headings the summary statement uses. Real documents abbreviate the
 #: year, so the match is on the stage word.
@@ -74,13 +112,17 @@ STAGE_COLUMN_MARKERS: dict[str, tuple[str, ...]] = {
 class BudgetAllocationRow(BaseModel):
     """One ministry-or-demand allocation line from a budget statement."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(frozen=True, extra="ignore")
 
     demand_no: str | None = None
     entity_raw: str = Field(min_length=2)
     entity_normalised: str = Field(min_length=2)
     fy: str = Field(pattern=r"^FY\d{4}$")
-    stage: str = Field(pattern=r"^(BE|RE|SUPPLEMENTARY)$")
+    # The workbook carries last year's actual alongside the estimates, so this
+    # source produces expenditure as well as authority. The stages stay strictly
+    # apart downstream; what changes here is only that this document is allowed
+    # to state more than one of them.
+    stage: str = Field(pattern=r"^(BE|RE|SUPPLEMENTARY|EXPENDITURE)$")
     amount_inr_cr: Decimal
     head: str = "total"
     extraction_method: str = "pdf_table"
@@ -223,11 +265,37 @@ def to_facts(
     rows: list[BudgetAllocationRow],
     *,
     resolve_ministry: dict[str, str] | None = None,
-) -> tuple[list[FiscalFactRow], list[dict[str, Any]]]:
+) -> tuple[list[FiscalFactRow], list[dict[str, Any]], int]:
+    """Map validated rows onto facts.
+
+    Returns the facts, the rows that could not be attributed, and the count of
+    rows deliberately skipped as central charges. The third number is reported
+    separately because it is not a failure: a run that skips interest payments
+    is a run working correctly, and counting those as parse errors would leave a
+    permanent backlog in the review queue that nobody can ever clear.
+    """
     aliases = resolve_ministry or {}
-    facts: list[FiscalFactRow] = []
     unresolved: list[dict[str, Any]] = []
+    skipped = 0
+
+    # A ministry can hold several demands: Defence votes its revenue and its
+    # capital separately, and a handful of ministries run to three or four. Each
+    # arrives here as its own row with the same entity, year and stage, which is
+    # exactly the natural key the fact table upserts on, so writing them one by
+    # one means the last demand silently overwrites the ones before it and the
+    # ministry ends up reporting a fraction of its budget. Left unaggregated
+    # this dropped 12 lakh crore, and every figure it dropped looked perfectly
+    # plausible on screen.
+    #
+    # So demands are summed per (entity, year, stage) first. That is what a
+    # ministry total is: the sum of the grants voted to it.
+    totals: dict[tuple[str, str, str], Decimal] = {}
+    demands_per_entity: dict[tuple[str, str, str], int] = {}
+
     for row in rows:
+        if row.entity_normalised in NON_MINISTRY_DEMANDS:
+            skipped += 1
+            continue
         entity_id = aliases.get(row.entity_normalised)
         if entity_id is None:
             unresolved.append(
@@ -238,19 +306,67 @@ def to_facts(
                 }
             )
             continue
+        key = (entity_id, row.fy, row.stage)
+        totals[key] = totals.get(key, Decimal(0)) + row.amount_inr_cr
+        demands_per_entity[key] = demands_per_entity.get(key, 0) + 1
+
+    # The national total is every demand, central charges included: interest and
+    # transfers to states are union expenditure even though they are not a
+    # ministry's. Summed here rather than left to the ministry rollup, which
+    # deliberately excludes them and would understate the country by a third.
+    #
+    # Checked against the published figure: this sum is 50.65 lakh crore for the
+    # 2025-26 budget estimate, which is the number the Union Budget states.
+    national: dict[tuple[str, str], Decimal] = {}
+    for row in rows:
+        national_key = (row.fy, row.stage)
+        national[national_key] = national.get(national_key, Decimal(0)) + row.amount_inr_cr
+
+    facts: list[FiscalFactRow] = []
+    for (fy, stage), amount in sorted(national.items()):
+        period_end = None
+        if stage == "EXPENDITURE":
+            from pipelines.parsers.fy_dates import fy_end
+
+            period_end = fy_end(fy)
         facts.append(
             FiscalFactRow(
-                fy=row.fy,
-                entity_type="ministry",
-                entity_id=entity_id,
-                stage=row.stage,  # type: ignore[arg-type]
+                fy=fy,
+                entity_type="national",
+                entity_id=NATIONAL_ENTITY_ID,
+                stage=stage,  # type: ignore[arg-type]
                 head="total",
-                amount_inr_cr=row.amount_inr_cr,
-                extraction_method=row.extraction_method,  # type: ignore[arg-type]
+                period_end=period_end,
+                amount_inr_cr=amount,
+                extraction_method="spreadsheet",
                 is_provisional=False,
             )
         )
-    return facts, unresolved
+
+    for (entity_id, fy, stage), amount in sorted(totals.items()):
+        # An actual is a full-year figure, so it carries the year end as its
+        # period. Estimates carry none: a budget estimate is not a measurement
+        # taken on a date.
+        period_end = None
+        if stage == "EXPENDITURE":
+            from pipelines.parsers.fy_dates import fy_end
+
+            period_end = fy_end(fy)
+
+        facts.append(
+            FiscalFactRow(
+                fy=fy,
+                entity_type="ministry",
+                entity_id=entity_id,
+                stage=stage,  # type: ignore[arg-type]
+                head="total",
+                period_end=period_end,
+                amount_inr_cr=amount,
+                extraction_method="spreadsheet",
+                is_provisional=False,
+            )
+        )
+    return facts, unresolved, skipped
 
 
 def run(
@@ -270,8 +386,9 @@ def run(
 
     try:
         with PipelineRun(SOURCE_ID, conn, dry_run=dry_run) as run_ctx:
+            target = url or URLS["statements_workbook"]
             ingested = ingest_url(
-                url or URLS["expenditure_summary"],
+                target,
                 source_id=SOURCE_ID,
                 client=http,
                 run=run_ctx,
@@ -279,8 +396,22 @@ def run(
             )
             outcome.artifacts.append(ingested.artifact.key)
 
-            tables = extract_tables(ingested.content, assist=assist)
-            rows, parse_errors, columns = parse_allocation_tables(tables, fy=fy)
+            # The workbook is the publisher's own spreadsheet, so its figures
+            # are numbers rather than text recovered from an unruled PDF table.
+            # The PDF path stays for a year published only as PDF, and it is
+            # chosen by what actually came back rather than by the URL, because
+            # a portal that reorganises can serve either from either path.
+            is_workbook = target.lower().endswith((".xlsx", ".xlsm")) or (
+                "spreadsheet" in (ingested.fetch.content_type or "")
+            )
+
+            if is_workbook:
+                rows, parse_errors, columns = parse_workbook(ingested.content)
+                extra_metrics: dict[str, Any] = {"sheets_parsed": len(columns)}
+            else:
+                tables = extract_tables(ingested.content, assist=assist)
+                rows, parse_errors, columns = parse_allocation_tables(tables, fy=fy)
+                extra_metrics = {"tables_extracted": len(tables)}
 
             validated = validate_rows(
                 rows, BudgetAllocationRow, source_id=SOURCE_ID, allow_empty=True
@@ -296,7 +427,7 @@ def run(
                 total_amount_inr_cr=be_total if validated else None,
                 columns=tuple(columns),
                 parse_error_count=len(parse_errors),
-                extra={"tables_extracted": len(tables)},
+                extra=extra_metrics,
             )
             run_ctx.set_run_metrics(metrics)
 
@@ -311,8 +442,14 @@ def run(
                 from pipelines.lib.db import load_alias_map
 
                 resolve_ministry = load_alias_map(conn, "ministry")
-            facts, unresolved = to_facts(validated, resolve_ministry=resolve_ministry)
+            facts, unresolved, skipped = to_facts(validated, resolve_ministry=resolve_ministry)
             outcome.parse_errors += len(unresolved)
+            if skipped:
+                outcome.notes.append(
+                    f"{skipped} rows skipped as central charges rather than ministries "
+                    f"(interest, pensions, transfers to states, tax administration, "
+                    f"and the constitutional bodies)."
+                )
             if conn is not None and not run_ctx.dry_run and ingested.source_record_id is not None:
                 from pipelines.lib.db import (
                     record_parse_errors,
@@ -333,7 +470,11 @@ def run(
             else:
                 outcome.notes.append("dry run: nothing written")
 
-            run_ctx.metric(facts_written=outcome.facts_written, unresolved=len(unresolved))
+            run_ctx.metric(
+                facts_written=outcome.facts_written,
+                unresolved=len(unresolved),
+                central_charges_skipped=skipped,
+            )
 
         # Status comes from the run context, which has just written the
         # pipeline_run row. Informational findings are recorded; only warn and

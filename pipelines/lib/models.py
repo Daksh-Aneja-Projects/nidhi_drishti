@@ -19,6 +19,7 @@ Head = Literal["revenue", "capital", "total"]
 ExtractionMethod = Literal[
     "structured_api",
     "csv_parse",
+    "spreadsheet",
     "html_table",
     "pdf_table",
     "pdf_text",

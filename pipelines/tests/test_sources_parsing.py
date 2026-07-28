@@ -51,6 +51,8 @@ from pipelines.sources.pfms_published.pipeline import (
 )
 from pipelines.sources.pfms_published.pipeline import to_facts as pfms_to_facts
 from pipelines.sources.pib_releases.pipeline import PibReleaseRow, parse_release_listing
+from pipelines.sources.union_budget.pipeline import BudgetAllocationRow
+from pipelines.sources.union_budget.pipeline import to_facts as union_budget_to_facts
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -590,3 +592,65 @@ class TestOgdWideTables:
             Path(__file__).resolve().parents[2] / "packages" / "core" / "src" / "types.ts"
         ).read_text(encoding="utf-8")
         assert f"NATIONAL_ENTITY_ID = '{NATIONAL_ENTITY_ID}'" in source
+
+
+class TestUnionBudgetDemandAggregation:
+    """A ministry's total is the sum of its demands, not its last one.
+
+    Defence votes revenue and capital as separate demands, and a handful of
+    ministries run to three or four. Each arrives as its own row with the same
+    entity, year and stage, which is exactly the natural key the fact table
+    upserts on. Written one at a time the last demand silently overwrites the
+    ones before it: on the live budget that dropped 12 lakh crore, and every
+    figure it dropped looked perfectly plausible on screen.
+    """
+
+    def _rows(self) -> list[BudgetAllocationRow]:
+        def row(entity: str, stage: str, amount: str) -> BudgetAllocationRow:
+            return BudgetAllocationRow(
+                entity_raw=entity,
+                entity_normalised=entity.lower(),
+                fy="FY2027",
+                stage=stage,
+                amount_inr_cr=Decimal(amount),
+                extraction_method="spreadsheet",
+            )
+
+        return [
+            row("defence services", "BE", "365478.98"),
+            row("capital outlay on defence", "BE", "192387.30"),
+            row("interest payments", "BE", "1403972.00"),
+        ]
+
+    def test_demands_of_one_ministry_are_summed(self) -> None:
+        facts, unresolved, skipped = union_budget_to_facts(
+            self._rows(),
+            resolve_ministry={
+                "defence services": "min-defence",
+                "capital outlay on defence": "min-defence",
+            },
+        )
+        ministry = [f for f in facts if f.entity_type == "ministry"]
+        assert len(ministry) == 1, "two demands for one ministry must produce one fact"
+        assert ministry[0].amount_inr_cr == Decimal("557866.28")
+        assert unresolved == []
+        assert skipped == 1
+
+    def test_central_charges_are_skipped_not_queued_as_errors(self) -> None:
+        # A run that skips interest payments is a run working correctly.
+        # Counting those as parse errors would leave a permanent backlog in the
+        # review queue that nobody can ever clear.
+        _, unresolved, skipped = union_budget_to_facts(self._rows(), resolve_ministry={})
+        assert skipped == 1
+        assert all("interest" not in str(item).lower() for item in unresolved)
+
+    def test_the_national_total_keeps_the_central_charges(self) -> None:
+        # Interest and transfers to states are union expenditure even though
+        # they are not a ministry's. Excluding them from the national figure
+        # would understate the country by a third.
+        facts, _, _ = union_budget_to_facts(
+            self._rows(), resolve_ministry={"defence services": "min-defence"}
+        )
+        national = [f for f in facts if f.entity_type == "national"]
+        assert len(national) == 1
+        assert national[0].amount_inr_cr == Decimal("1961838.28")

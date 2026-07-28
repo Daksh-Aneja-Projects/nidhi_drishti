@@ -177,6 +177,7 @@ export const RETRIEVAL_METHOD_LABELS: Record<RetrievalMethod, string> = {
 export type ExtractionMethod =
   | 'structured_api'
   | 'csv_parse'
+  | 'spreadsheet'
   | 'html_table'
   | 'pdf_table'
   | 'pdf_text'
@@ -187,6 +188,7 @@ export type ExtractionMethod =
 export const EXTRACTION_METHOD_LABELS: Record<ExtractionMethod, string> = {
   structured_api: 'Structured API',
   csv_parse: 'CSV parse',
+  spreadsheet: 'Publisher spreadsheet',
   html_table: 'HTML table parse',
   pdf_table: 'PDF table extraction',
   pdf_text: 'PDF text extraction',

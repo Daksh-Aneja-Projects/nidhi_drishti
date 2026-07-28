@@ -34,6 +34,7 @@ from typing import Any
 import structlog
 
 from pipelines.parsers.fy_dates import fy_from_indian_label
+from pipelines.parsers.text_norm import normalise_org_name
 
 log = structlog.get_logger(__name__)
 
@@ -308,7 +309,18 @@ def parse_sheet(
             {
                 "sheet": sheet,
                 "demand_no": demand_no,
-                "entity_raw": entity,
+                # The body a figure is attributed to. The demand name is the
+                # level the entity master records (departments, not ministries)
+                # so it is preferred; the owning ministry is the fallback for a
+                # demand whose name is the ministry itself.
+                "entity_raw": demand_name or entity,
+                "entity_normalised": normalise_org_name(demand_name or entity),
+                "owner_raw": entity,
+                "owner_normalised": normalise_org_name(entity),
+                # Read from the publisher's own spreadsheet cell, which is a
+                # different confidence from a figure recovered out of a PDF
+                # table, and the provenance popover says which.
+                "extraction_method": "spreadsheet",
                 "fy": stage.fy,
                 "stage": stage.stage,
                 "amount_inr_cr": amount,

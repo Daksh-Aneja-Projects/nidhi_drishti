@@ -4,6 +4,7 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "apps/web/.next",
   "framework": "nextjs",
-  "regions": ["bom1"],
-  "github": { "silent": true }
+  "github": {
+    "silent": true
+  }
 }

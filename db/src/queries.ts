@@ -308,6 +308,20 @@ export async function listMinistrySummaries(
   return rows.map((row) => mapMinistry(row, provenance));
 }
 
+/**
+ * A ministry for a year, or null only when no such ministry exists.
+ *
+ * The summary view holds one row per ministry that has facts in that year, so
+ * reading it alone made a ministry with nothing ingested indistinguishable from
+ * a ministry that does not exist, and the page returned 404. On a database with
+ * 60 ministries and 43 of them reporting, that told a reader seventeen times
+ * over that a real ministry was not a thing, which is both wrong and the exact
+ * failure this product's "not reported, never absent" rule exists to prevent.
+ *
+ * So a miss in the view falls back to the master record and every figure comes
+ * back not-reported. The page then says what is true: this ministry exists, and
+ * no source has published its figures for this year.
+ */
 export async function getMinistrySummary(
   fy: string,
   ministryId: string,
@@ -316,12 +330,37 @@ export async function getMinistrySummary(
     `SELECT * FROM mv_ministry_summary WHERE fy = $1 AND ministry_id = $2`,
     [fy, ministryId],
   );
-  if (!row) return null;
-  const provenance = await getProvenanceMap([
-    row.authority_source_record_id,
-    row.expenditure_source_record_id,
-  ]);
-  return mapMinistry(row, provenance);
+  if (row) {
+    const provenance = await getProvenanceMap([
+      row.authority_source_record_id,
+      row.expenditure_source_record_id,
+    ]);
+    return mapMinistry(row, provenance);
+  }
+
+  const master = await queryOne<{ ministry_id: string; name: string; sector: string | null }>(
+    `SELECT ministry_id, name, sector FROM ministry WHERE ministry_id = $1`,
+    [ministryId],
+  );
+  if (!master) return null;
+  return {
+    fy: fy as FiscalYear,
+    ministryId: master.ministry_id,
+    name: master.name,
+    sector: master.sector,
+    be: NOT_REPORTED,
+    re: NOT_REPORTED,
+    supplementary: NOT_REPORTED,
+    currentAuthority: NOT_REPORTED,
+    expenditureToDate: NOT_REPORTED,
+    expenditureAsOf: null,
+    balance: NOT_REPORTED,
+    revenueExpenditure: NOT_REPORTED,
+    capitalExpenditure: NOT_REPORTED,
+    burn: { pctSpent: NOT_REPORTED, pctFyElapsed: 0, burnRatio: NOT_REPORTED },
+    openFlagCount: 0,
+    provenance: { authority: null, expenditure: null },
+  };
 }
 
 /** Allocation across five fiscal years, for the year-on-year trend. */
@@ -498,18 +537,56 @@ export async function listSchemeSummaries(
   return rows.map((row) => mapScheme(row, provenance));
 }
 
+/**
+ * A scheme for a year, or null only when no such scheme exists.
+ *
+ * Same reasoning as {@link getMinistrySummary}, and the same bug: with no
+ * scheme-level figures ingested, every one of the 78 schemes in the master
+ * returned 404. A reader looking up PM-KISAN was told it does not exist.
+ */
 export async function getSchemeSummary(fy: string, schemeId: string): Promise<SchemeSummary | null> {
   const row = await queryOne<SchemeRow>(
     `SELECT * FROM mv_scheme_summary WHERE fy = $1 AND scheme_id = $2`,
     [fy, schemeId],
   );
-  if (!row) return null;
-  const provenance = await getProvenanceMap([
-    row.allocation_source_record_id,
-    row.release_source_record_id,
-    row.utilization_source_record_id,
-  ]);
-  return mapScheme(row, provenance);
+  if (row) {
+    const provenance = await getProvenanceMap([
+      row.allocation_source_record_id,
+      row.release_source_record_id,
+      row.utilization_source_record_id,
+    ]);
+    return mapScheme(row, provenance);
+  }
+
+  const master = await queryOne<{
+    scheme_id: string;
+    name: string;
+    ministry_id: string | null;
+    ministry_name: string | null;
+    scheme_type: string | null;
+  }>(
+    `SELECT s.scheme_id, s.name, s.ministry_id, m.name AS ministry_name, s.scheme_type
+       FROM scheme s
+       LEFT JOIN ministry m ON m.ministry_id = s.ministry_id
+      WHERE s.scheme_id = $1`,
+    [schemeId],
+  );
+  if (!master) return null;
+  return {
+    fy: fy as FiscalYear,
+    schemeId: master.scheme_id,
+    name: master.name,
+    ministryId: master.ministry_id ?? '',
+    ministryName: master.ministry_name ?? '',
+    schemeType: (master.scheme_type as SchemeType | null) ?? null,
+    allocation: NOT_REPORTED,
+    released: NOT_REPORTED,
+    utilized: NOT_REPORTED,
+    utilizationPct: NOT_REPORTED,
+    tenderCount: 0,
+    tenderValue: NOT_REPORTED,
+    provenance: { allocation: null, released: null, utilized: null },
+  };
 }
 
 /* ------------------------------------------------------------------ *

@@ -100,6 +100,23 @@ The local stack binds shifted ports (Postgres 5433, Redis 6380, MinIO 9002/9003)
 coexists with anything already running rather than silently connecting to the wrong
 database.
 
+### data.gov.in
+
+The one Tier 1 source with a real API and a free key, so it is preferred
+wherever a dataset mirrors a document we would otherwise parse out of a PDF. Get
+a key from data.gov.in (My Account, then "Generate Your New API KEY"), put it in
+`OGD_API_KEY`, then find what you need:
+
+```bash
+uv run python -m pipelines ogd search "expenditure budget"
+uv run python -m pipelines ogd inspect <resource-id>
+```
+
+`inspect` reports the resource's field names with a sample value for each, which
+is what a `DatasetSpec` needs. Registering a dataset stays a deliberate act: the
+unit its amounts are in has to be written down by a person, because a bare
+number from an API is exactly as ambiguous as one in a PDF.
+
 ### Sources that refuse automated access
 
 Several official portals block automated clients or publish figures that only

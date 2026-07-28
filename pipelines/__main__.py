@@ -109,6 +109,19 @@ def build_parser() -> argparse.ArgumentParser:
         choices=sorted(SOURCE_MODULES),
         help="check one source's drop directory; omit to check every one",
     )
+
+    ogd_parser = sub.add_parser("ogd", help="explore the data.gov.in catalogue")
+    ogd_sub = ogd_parser.add_subparsers(dest="ogd_command", required=True)
+
+    search_parser = ogd_sub.add_parser("search", help="find resources by keyword")
+    search_parser.add_argument("query", help="words to match in the title, for example 'budget'")
+    search_parser.add_argument("--limit", type=int, default=20)
+    search_parser.add_argument("--offset", type=int, default=0)
+
+    inspect_parser = ogd_sub.add_parser(
+        "inspect", help="show one resource's field names and a sample value for each"
+    )
+    inspect_parser.add_argument("resource_id")
     return parser
 
 
@@ -206,6 +219,32 @@ def _intake_command(args: argparse.Namespace) -> int:
     return 1 if problems else 0
 
 
+def _ogd_command(args: argparse.Namespace) -> int:
+    """Read-only catalogue exploration. Registers nothing; prints for a person."""
+    from pipelines.sources.ogd_datasets.catalog import describe_resource, search_datasets
+
+    try:
+        if args.ogd_command == "search":
+            entries = search_datasets(args.query, limit=args.limit, offset=args.offset)
+            if not entries:
+                print(f"No resources matched {args.query!r}.")
+                return 1
+            for entry in entries:
+                print(entry.as_line())
+                print()
+            print(
+                f"{len(entries)} result(s). Inspect one with: python -m pipelines ogd inspect <id>"
+            )
+            return 0
+
+        print(describe_resource(args.resource_id).as_report())
+        return 0
+    except ValueError as exc:
+        # Almost always the missing key, and the message says how to get one.
+        print(str(exc), file=sys.stderr)
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     configure_logging(json_output=bool(args.json_logs))
@@ -219,6 +258,9 @@ def main(argv: list[str] | None = None) -> int:
         for name, module in sorted(SOURCE_MODULES.items()):
             print(f"  {name:<18} {module}")
         return 0
+
+    if args.command == "ogd":
+        return _ogd_command(args)
 
     if args.command == "intake":
         try:

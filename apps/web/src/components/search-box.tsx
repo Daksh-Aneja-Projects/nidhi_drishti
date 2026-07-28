@@ -72,7 +72,7 @@ export function SearchBox() {
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="flex items-center gap-1.5 border border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper)] px-2 py-1">
+      <label className="flex items-center gap-1.5 border border-[color:var(--color-brass)] bg-[color:var(--color-paper-raised)] px-2 py-1">
         <Icon icon={Search} size="sm" className="text-[color:var(--color-ink-faint)]" />
         <span className="sr-only">{strings.nav.search}</span>
         <input

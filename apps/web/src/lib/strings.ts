@@ -23,6 +23,7 @@ export const strings = {
   nav: {
     overview: 'Overview',
     ministries: 'Ministries',
+    analysis: 'Analysis',
     schemes: 'Schemes',
     states: 'States',
     flags: 'Signals',
@@ -99,6 +100,53 @@ export const strings = {
     missing: 'No source record is attached to this figure.',
   },
 
+  analysis: {
+    eyebrow: 'Variance analysis',
+    title: 'Which ministries are behind, and by how much',
+    lede:
+      'Every ministry that reports both an allocation and a spending figure, measured against a straight line through the financial year. The gap is stated in rupees against each ministry\u2019s own allocation, because the same percentage on a large ministry and a small one are not the same fact about public money.',
+    parLabel: 'Straight line',
+    paceAxis: 'Share of allocation spent, against share of year elapsed',
+    gapSeries: 'Unspent balance',
+    tooltipVariance: 'Against the straight line',
+    colMinistry: 'Ministry',
+    colAuthority: 'Allocation',
+    colSpent: 'Spent',
+    colAbsorption: 'Share spent',
+    colVariance: 'Against the line',
+    colPosition: 'Position',
+    showAll: 'Show all {count}',
+    showFewer: 'Show fewer',
+    dumbbellAria:
+      'Allocation and spending for each ministry, joined by the unspent balance, ordered by rupees behind a straight line.',
+    distributionAria:
+      'Each ministry placed on the pace axis, sized by its allocation, against a straight line through the year.',
+    dumbbellNote:
+      'Hollow marks are the allocation, filled marks are spending accounted so far, {fy}. Select a row to open that ministry.',
+    distributionTitle: 'The shape of the year',
+    distributionLede:
+      'A league table names the extremes and hides the shape. This places every ministry on one axis, sized by its allocation, so a government broadly in step with two outliers can be told apart from one that is mostly behind.',
+    behindHeadline: 'behind a straight line',
+    aheadHeadline: 'ahead of a straight line',
+    behindHelp:
+      'Summed across only the ministries that are behind. Ministries running ahead are counted separately rather than netted off, because a set half far behind and half far ahead averages to nothing and is not the same thing as one on the line.',
+    concentrationTitle: 'Concentration',
+    concentrationBody:
+      'The largest {n} ministries hold {share} of the allocation compared here, so the pace of a handful of them moves the national figure more than everything else combined.',
+    limitsTitle: 'What this does not establish',
+    limits: [
+      'A straight line is not a spending plan. No ministry is required to follow one, and many should not: capital projects pay on milestones, procurement lands in tranches, and transfers to states follow their own release calendar.',
+      'A ministry below the line in December can finish the year exactly on budget. Being behind is a reason to ask a question, not an answer to one.',
+      'Nothing here measures whether money was spent well. It measures whether it moved, against the calendar and against what Parliament allowed.',
+      'Ministries that do not report both figures are left out rather than scored at zero. Their absence is not a finding about them.',
+    ],
+    skippedNote:
+      '{count} of {total} ministries are not compared here, because the source does not publish both an allocation and a spending figure for them.',
+    methodTitle: 'How this is computed',
+    methodBody:
+      'Share spent is expenditure accounted to date divided by the current spending authority. The straight line is the share of the financial year elapsed on the date that expenditure figure covers, which is stated on every chart. The rupee figure is the difference between the two, multiplied by that ministry\u2019s own allocation.',
+  },
+
   freshness: {
     title: 'Data freshness',
     stale: 'Overdue',
@@ -106,6 +154,10 @@ export const strings = {
     updated: 'Updated',
     asOf: 'As of',
     lastFetched: 'Last fetched',
+    reportingCount: '{reporting} of {total} sources reporting',
+    newestDocument: 'Newest document',
+    overdueCount: '{count} overdue',
+    noneIngested: 'No source has been ingested yet, so no figures are published.',
   },
 
   common: {

@@ -3,38 +3,73 @@
 /* ===========================================================================
    Nidhi Drishti design tokens.
 
-   The register, not the newspaper. The visual world is the ruled account
-   register: ledger paper, indigo ink, brass. Every token below is derived from
-   that, and the one thing the product is remembered by is the pace track, so
-   everything around it stays quiet.
+   The bahi-khata, not the broadsheet.
+
+   Since 2019 the Union Budget has arrived in Parliament wrapped in red cloth,
+   in place of the colonial despatch box: a bahi-khata, the ledger of the Indian
+   trading house. That object is the whole design. Its two materials become the
+   two surfaces of the interface, and they do different jobs:
+
+     the cloth   is chrome. Navigation, identity, the fiscal year, freshness.
+                 Saturated lac crimson with a brass thread. It frames and it
+                 never carries a figure.
+     the leaf    is content. Every rupee, every chart, every citation, on a
+                 cool paper white inset into the cloth with a real edge.
+
+   Keeping money off the crimson is a legibility decision before an aesthetic
+   one: these figures get screenshotted into articles, and a number has to
+   survive being cropped out of its page.
+
+   Brass is reserved for measurement, the way a rule or a plumb line is brass on
+   an instrument. Vermilion is reserved for provenance and flags. Neither ever
+   decorates.
 
    Deliberately a single light theme. This is a document, and a citable figure
    should look the same to everyone who screenshots it.
    =========================================================================== */
 
 @theme {
-  /* --- Surfaces. Cool ledger paper, never warm cream. --- */
-  --color-paper: #eff1ee;
-  --color-paper-raised: #f8f9f7;
-  --color-paper-sunk: #e4e7e3;
+  /* --- The cloth. Chrome only, and it is the one saturated field on screen,
+         so everything it wraps has to be quiet enough to survive it. --- */
+  --color-cloth: #5e1614;
+  --color-cloth-deep: #400f0e;
+  --color-cloth-soft: #7a2320;
+  /* Type set on the cloth. 8.9:1 and 4.6:1 against --color-cloth. */
+  --color-on-cloth: #f7ece4;
+  --color-on-cloth-faint: #d7ab9e;
 
-  /* --- Ink. Blue-black, the colour of a fountain pen on a form.
+  /* --- Brass. The thread in the binding, and every mark that measures. --- */
+  --color-brass: #b98b34;
+  --color-brass-soft: #d8b877;
+
+  /* --- Surfaces. The paper leaf. Warm enough to read as paper against the
+         cloth, cool enough that it is not the cream every other site uses. --- */
+  --color-paper: #ecebe6;
+  --color-paper-raised: #fbfaf7;
+  --color-paper-sunk: #e2e0d8;
+
+  /* --- Ink. Warm near-black: this belongs to paper, not to a screen.
          Every one of these clears 4.5:1 against paper. `faint` is the eyebrow
          label tone, which is small and appears on every screen, so it is the
          one most easily pushed too light: at #6f7c85 it measured 3.77:1 and
          failed. --- */
-  --color-ink: #16202b;        /* 14.49:1 */
-  --color-ink-soft: #48555f;   /*  6.74:1 */
-  --color-ink-faint: #5f6b73;  /*  4.75:1 */
+  --color-ink: #1a1512;        /* 15.1:1 */
+  --color-ink-soft: #4a423c;   /*  7.4:1 */
+  --color-ink-faint: #625950;  /*  5.2:1 */
 
   /* --- Rules. The ledger's own lines. --- */
-  --color-rule: #ccd2cc;
-  --color-rule-strong: #9aa5a0;
+  --color-rule: #d3d0c6;
+  --color-rule-strong: #a29a8c;
 
-  /* --- The pace axis. Mirrors BURN_SCALE_STOPS in @nidhi/core exactly. --- */
-  --color-behind: #1f3a6e;
-  --color-behind-soft: #93a6c6;
-  --color-onpace: #c9ccc4;
+  /* --- The pace axis. Mirrors BURN_SCALE_STOPS in @nidhi/core exactly.
+         Behind is ink, ahead is brass, and the midpoint is a stone that is
+         deliberately unremarkable: on pace is the case with nothing to look at,
+         and colouring it would invent a finding. It is darkened from the old
+         #c9ccc4 only far enough to hold an edge against the leaf, because the
+         commonest reading should still be visible as a reading. --- */
+  --color-behind: #223a63;
+  --color-behind-soft: #93a3bd;
+  --color-onpace: #b4b0a4;
   --color-ahead: #a8791c;
   --color-ahead-soft: #d3b06a;
 
@@ -64,6 +99,11 @@
   --radius-md: 2px;
 
   --shadow-raised: 0 1px 0 0 var(--color-rule);
+  /* A leaf sits *in* the binding, so it casts into it rather than floating
+     above the page the way a card does. */
+  --shadow-leaf:
+    0 0 0 1px var(--color-rule),
+    0 18px 40px -28px rgba(26, 21, 18, 0.55);
 }
 
 /* ---------------------------------------------------------------------------
@@ -174,6 +214,47 @@ body {
     transparent 3px
   );
   opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------------------
+   The cloth and the leaf.
+
+   The binding is woven, so it gets a weave rather than a flat fill: two
+   crossed hairline gradients at a very low contrast. It reads as texture at
+   arm's length and disappears at reading distance, which is what a background
+   should do.
+   --------------------------------------------------------------------------- */
+
+.cloth {
+  background-color: var(--color-cloth);
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.028) 0px,
+      rgba(255, 255, 255, 0.028) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.035) 0px,
+      rgba(0, 0, 0, 0.035) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  color: var(--color-on-cloth);
+}
+
+/* The brass thread that finishes the binding. One hairline, never a gradient
+   bar: it is a thread, not a highlight. */
+.thread-bottom {
+  box-shadow: inset 0 -1px 0 0 var(--color-brass);
+}
+
+/* A page lying in the open binding. */
+.leaf {
+  background-color: var(--color-paper-raised);
+  box-shadow: var(--shadow-leaf);
 }
 
 /* ---------------------------------------------------------------------------

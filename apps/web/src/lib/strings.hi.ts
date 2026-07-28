@@ -40,6 +40,7 @@ export const strings: Strings = {
   nav: {
     overview: 'सारांश',
     ministries: 'मंत्रालय',
+    analysis: 'विश्लेषण',
     schemes: 'योजनाएँ',
     states: 'राज्य',
     flags: 'संकेत',
@@ -111,6 +112,53 @@ export const strings: Strings = {
     missing: 'इस आँकड़े से कोई स्रोत रिकॉर्ड संलग्न नहीं है.',
   },
 
+  analysis: {
+    eyebrow: 'विचलन विश्लेषण',
+    title: 'कौन से मंत्रालय पीछे हैं, और कितना',
+    lede:
+      'हर वह मंत्रालय जो आवंटन और व्यय दोनों बताता है, वित्त वर्ष की सीधी रेखा के सामने मापा गया. अंतर रुपयों में बताया गया है.',
+    parLabel: 'सीधी रेखा',
+    paceAxis: 'खर्च का अंश, वर्ष के बीते अंश के सामने',
+    gapSeries: 'अव्ययित शेष',
+    tooltipVariance: 'सीधी रेखा के सापेक्ष',
+    colMinistry: 'मंत्रालय',
+    colAuthority: 'आवंटन',
+    colSpent: 'खर्च',
+    colAbsorption: 'खर्च का अंश',
+    colVariance: 'रेखा के सापेक्ष',
+    colPosition: 'स्थिति',
+    showAll: 'सभी {count} दिखाएँ',
+    showFewer: 'कम दिखाएँ',
+    dumbbellAria:
+      'प्रत्येक मंत्रालय का आवंटन और खर्च.',
+    distributionAria:
+      'प्रत्येक मंत्रालय गति अक्ष पर.',
+    dumbbellNote:
+      'खोखले चिह्न आवंटन हैं, भरे चिह्न खर्च, {fy}.',
+    distributionTitle: 'वर्ष का आकार',
+    distributionLede:
+      'एक सूची केवल चरम बताती है. यह हर मंत्रालय को एक अक्ष पर रखता है.',
+    behindHeadline: 'सीधी रेखा से पीछे',
+    aheadHeadline: 'सीधी रेखा से आगे',
+    behindHelp:
+      'केवल पीछे चल रहे मंत्रालयों का योग.',
+    concentrationTitle: 'संकेंद्रण',
+    concentrationBody:
+      'सबसे बड़े {n} मंत्रालयों के पास तुलना किए गए आवंटन का {share} है.',
+    limitsTitle: 'यह क्या सिद्ध नहीं करता',
+    limits: [
+      'सीधी रेखा कोई व्यय योजना नहीं है. पूंजीगत परियोजनाएँ चरणों में भुगतान करती हैं.',
+      'दिसंबर में रेखा से नीचे रहा मंत्रालय वर्ष के अंत तक पूरा खर्च कर सकता है.',
+      'यह नहीं मापता कि पैसा अच्छी तरह खर्च हुआ या नहीं.',
+      'जो मंत्रालय दोनों आँकड़े नहीं बताते, उन्हें छोड़ दिया गया है.',
+    ],
+    skippedNote:
+      '{total} में से {count} मंत्रालय यहाँ शामिल नहीं हैं.',
+    methodTitle: 'यह कैसे गणना की गई',
+    methodBody:
+      'खर्च का अंश = अब तक का व्यय बटा वर्तमान व्यय अधिकार.',
+  },
+
   freshness: {
     title: 'आँकड़ों की ताज़गी',
     stale: 'अतिदेय',
@@ -118,6 +166,10 @@ export const strings: Strings = {
     updated: 'अद्यतन',
     asOf: 'इस तिथि तक',
     lastFetched: 'अंतिम बार प्राप्त',
+    reportingCount: '{total} में से {reporting} स्रोत रिपोर्ट कर रहे हैं',
+    newestDocument: 'नवीनतम दस्तावेज़',
+    overdueCount: '{count} अतिदेय',
+    noneIngested: 'अभी तक कोई स्रोत लिया नहीं गया, इसलिए कोई आँकड़ा प्रकाशित नहीं है.',
   },
 
   common: {

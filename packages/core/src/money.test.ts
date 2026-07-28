@@ -72,17 +72,29 @@ describe('formatINRCr', () => {
   it('renders the not-reported label instead of a zero', () => {
     expect(formatINRCr(NOT_REPORTED)).toBe('Not reported');
     expect(formatINRCr(NOT_REPORTED, { notReportedLabel: 'Not published' })).toBe('Not published');
-    expect(formatINRCr(0)).toBe('₹0.00 cr');
+    expect(formatINRCr(0)).toBe('₹0 cr');
   });
 
   it('places the sign outside the rupee symbol', () => {
-    expect(formatINRCr(-500)).toBe('-₹500.00 cr');
-    expect(formatINRCr(500, { signed: true })).toBe('+₹500.00 cr');
+    expect(formatINRCr(-500)).toBe('-₹500 cr');
+    expect(formatINRCr(500, { signed: true })).toBe('+₹500 cr');
+  });
+
+  it('shows paise only when the figure has them', () => {
+    // Most sources publish whole crore. Padding those to .00 puts two
+    // meaningless zeros on the largest numbers on the site.
+    expect(formatINRCr(623889)).toBe('₹6,23,889 cr');
+    expect(formatINRCr(105368.88)).toBe('₹1,05,368.88 cr');
+    // A float artefact of a NUMERIC(20,2) round trip is not a figure with
+    // paise in it.
+    expect(formatINRCr(623888.999999)).toBe('₹6,23,889 cr');
   });
 
   it('honours decimal, symbol and unit options', () => {
     expect(formatINRCr(1234.5, { decimals: 0 })).toBe('₹1,235 cr');
     expect(formatINRCr(1234.5, { showSymbol: false, showUnit: false })).toBe('1,234.50');
+    // Pinning the scale still pads, for a column that has to line up.
+    expect(formatINRCr(500, { decimals: 2 })).toBe('₹500.00 cr');
   });
 });
 
@@ -98,7 +110,7 @@ describe('formatINRLakhCr', () => {
 
 describe('formatINRAuto', () => {
   it('switches unit at one lakh crore', () => {
-    expect(formatINRAuto(99_999)).toBe('₹99,999.00 cr');
+    expect(formatINRAuto(99_999)).toBe('₹99,999 cr');
     expect(formatINRAuto(100_000)).toBe('₹1.00 lakh cr');
   });
 });

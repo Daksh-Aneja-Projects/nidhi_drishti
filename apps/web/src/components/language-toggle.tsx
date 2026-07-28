@@ -41,7 +41,7 @@ export function LanguageToggle() {
       <Icon
         icon={Languages}
         size="xs"
-        className="text-[color:var(--color-ink-faint)]"
+        className="text-[color:var(--color-on-cloth-faint)]"
         label={strings.language.label}
       />
       <Option
@@ -50,7 +50,7 @@ export function LanguageToggle() {
         active={active === 'en'}
         label={strings.language.english}
       />
-      <span aria-hidden="true" className="text-[color:var(--color-rule-strong)]">
+      <span aria-hidden="true" className="text-[color:var(--color-on-cloth-faint)] opacity-60">
         /
       </span>
       <Option
@@ -85,8 +85,8 @@ function Option({
       aria-current={active ? 'true' : undefined}
       className={
         active
-          ? 'font-medium text-[color:var(--color-ink)] underline decoration-[color:var(--color-seal)] decoration-2 underline-offset-4'
-          : 'text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]'
+          ? 'font-medium text-[color:var(--color-on-cloth)] underline decoration-[color:var(--color-brass)] decoration-2 underline-offset-4'
+          : 'text-[color:var(--color-on-cloth-faint)] transition-colors hover:text-[color:var(--color-on-cloth)]'
       }
     >
       {label}

@@ -26,6 +26,7 @@ export async function SiteHeader({
   const navLinks = [
     { href: '/', label: strings.nav.overview },
     { href: '/ministries', label: strings.nav.ministries },
+    { href: '/analysis', label: strings.nav.analysis },
     { href: '/schemes', label: strings.nav.schemes },
     { href: '/states', label: strings.nav.states },
     { href: '/flags', label: strings.nav.flags },
@@ -33,14 +34,16 @@ export async function SiteHeader({
   ];
 
   return (
-    <header className="border-b border-[color:var(--color-rule-strong)] bg-[color:var(--color-paper-raised)]">
-      <div className="mx-auto flex max-w-[90rem] flex-wrap items-center gap-x-8 gap-y-3 px-4 py-3 sm:px-6">
+    // The binding. Everything that frames the document lives on the cloth;
+    // nothing that is a figure ever does.
+    <header className="cloth thread-bottom">
+      <div className="mx-auto flex max-w-[90rem] flex-wrap items-center gap-x-8 gap-y-3 px-4 py-3.5 sm:px-6">
         <Link href="/" className="group flex items-baseline gap-2.5">
-          <span className="font-display text-lg uppercase tracking-[0.14em]">
+          <span className="font-display text-[19px] uppercase leading-none tracking-[0.16em] text-[color:var(--color-on-cloth)]">
             {strings.site.name}
           </span>
           <span
-            className="text-sm text-[color:var(--color-ink-faint)]"
+            className="text-sm text-[color:var(--color-on-cloth-faint)]"
             lang="hi"
             aria-hidden="true"
           >
@@ -49,12 +52,15 @@ export async function SiteHeader({
         </Link>
 
         <nav aria-label={strings.a11y.primaryNav} className="order-3 w-full lg:order-none lg:w-auto">
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <ul className="flex flex-wrap items-center gap-x-6 gap-y-1">
             {navLinks.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="text-[13px] text-[color:var(--color-ink-soft)] transition-colors hover:text-[color:var(--color-ink)]"
+                  // Underline on hover rather than a colour shift: on a
+                  // saturated ground a colour change reads as a different
+                  // state, and these are all the same kind of thing.
+                  className="text-[13px] text-[color:var(--color-on-cloth-faint)] underline-offset-[6px] transition-colors hover:text-[color:var(--color-on-cloth)] hover:underline hover:decoration-[color:var(--color-brass)]"
                 >
                   {link.label}
                 </Link>

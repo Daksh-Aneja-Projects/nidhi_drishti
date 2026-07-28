@@ -81,8 +81,17 @@ export function groupIndianDigits(digits: string): string {
 }
 
 export interface FormatOptions {
-  /** Decimal places. Default 2, matching NUMERIC(20,2). */
-  decimals?: number;
+  /**
+   * Decimal places, or `'auto'` (the default): show paise only when the figure
+   * actually carries them.
+   *
+   * The column is NUMERIC(20,2) and some sources do publish to the paise, so
+   * the precision has to survive. But most publish whole crore, and padding
+   * those to `₹6,23,889.00 cr` puts two meaningless zeros on the largest
+   * numbers on the site, which reads as false precision and crowds the figure
+   * that matters. Pass a number to pin it.
+   */
+  decimals?: number | 'auto';
   /** Include the rupee sign. Default true. */
   showSymbol?: boolean;
   /** Include the unit suffix (`cr`, `lakh cr`). Default true. */
@@ -94,17 +103,32 @@ export interface FormatOptions {
 }
 
 const DEFAULTS: Required<FormatOptions> = {
-  decimals: 2,
+  decimals: 'auto',
   showSymbol: true,
   showUnit: true,
   notReportedLabel: 'Not reported',
   signed: false,
 };
 
-function formatNumberIndian(value: number, decimals: number, signed: boolean): string {
+/**
+ * Resolve `'auto'` against the value.
+ *
+ * Rounded to the stored scale first: 623888.999999 is a float artefact of a
+ * NUMERIC(20,2) round trip, not a figure with paise in it.
+ */
+function resolveDecimals(decimals: number | 'auto', value: number): number {
+  if (decimals !== 'auto') return decimals;
+  return Math.round(value * 100) % 100 === 0 ? 0 : 2;
+}
+
+function formatNumberIndian(
+  value: number,
+  decimals: number | 'auto',
+  signed: boolean,
+): string {
   const negative = value < 0;
   const abs = Math.abs(value);
-  const fixed = abs.toFixed(decimals);
+  const fixed = abs.toFixed(resolveDecimals(decimals, abs));
   const [intPart = '0', fracPart] = fixed.split('.');
   const grouped = groupIndianDigits(intPart);
   const body = fracPart ? `${grouped}.${fracPart}` : grouped;

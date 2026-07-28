@@ -267,13 +267,26 @@ async function OverviewTab({ ministry, fy }: { ministry: MinistrySummary; fy: st
     monthly: priorByIndex.get(point.fiscalMonthIndex) ?? null,
   }));
 
+  // The revision is a delta from the budget estimate, but only where the budget
+  // estimate is on record. Where a source publishes the revised estimate alone,
+  // subtracting an unreported figure from it renders "Revised estimate: Not
+  // reported" beside a spending authority derived from that very number, which
+  // reads as a contradiction. In that case the revised estimate is the opening
+  // total, which is what it actually is here.
+  const beIsReported = !isNotReported(ministry.be);
+  const openingSteps: WaterfallStep[] = beIsReported
+    ? [
+        { label: FISCAL_STAGE_LABELS.BE, kind: 'total', value: toPlain(ministry.be) },
+        {
+          label: FISCAL_STAGE_LABELS.RE,
+          kind: 'delta',
+          value: toPlain(subtract(ministry.re, ministry.be)),
+        },
+      ]
+    : [{ label: FISCAL_STAGE_LABELS.RE, kind: 'total', value: toPlain(ministry.re) }];
+
   const steps: WaterfallStep[] = [
-    { label: FISCAL_STAGE_LABELS.BE, kind: 'total', value: toPlain(ministry.be) },
-    {
-      label: FISCAL_STAGE_LABELS.RE,
-      kind: 'delta',
-      value: toPlain(subtract(ministry.re, ministry.be)),
-    },
+    ...openingSteps,
     {
       label: FISCAL_STAGE_LABELS.SUPPLEMENTARY,
       kind: 'delta',

@@ -96,15 +96,26 @@ export async function PaceTrack({
         role="img"
         aria-label={`${label ? `${label}. ` : ''}${description}`}
       >
-        {/* The track itself. */}
+        {/* The track itself. A ruled channel, not a floating bar: the inset
+            edge is what makes it read as an instrument with a zero and a full,
+            which matters most when the fill colour is the neutral of on-pace
+            and would otherwise be a grey rectangle on a grey field. */}
         <div
           className="absolute left-0 right-0 top-1/2 -translate-y-1/2 overflow-hidden"
-          style={{ height, backgroundColor: 'var(--color-paper-sunk)' }}
+          style={{
+            height,
+            backgroundColor: 'var(--color-paper-sunk)',
+            boxShadow: 'inset 0 0 0 1px var(--color-rule)',
+          }}
         >
-          {/* Spend fill. */}
+          {/* Spend fill, with a defined leading edge so the reading is exact. */}
           <div
             className={`absolute inset-y-0 left-0 ${animate ? 'animate-track' : ''}`}
-            style={{ width: `${spentPos}%`, backgroundColor: accent }}
+            style={{
+              width: `${spentPos}%`,
+              backgroundColor: accent,
+              boxShadow: 'inset -1px 0 0 0 rgba(22,32,43,0.35)',
+            }}
           />
           {/* The gap: hatched, because it is the part that has not settled. */}
           {gapWidth > 0.5 ? (
@@ -117,6 +128,20 @@ export async function PaceTrack({
               }}
             />
           ) : null}
+
+          {/* Quarter ticks. The fiscal year is the axis this whole product
+              measures against, so its divisions are drawn rather than left to
+              the reader to estimate from a bare bar. */}
+          {!isChip
+            ? [25, 50, 75].map((tick) => (
+                <div
+                  key={tick}
+                  className="absolute top-0 bottom-0 w-px opacity-40"
+                  style={{ left: `${tick}%`, backgroundColor: 'var(--color-rule-strong)' }}
+                  aria-hidden="true"
+                />
+              ))
+            : null}
         </div>
 
         {/* Calendar marker: a full-height rule, the way a date line is drawn on
@@ -130,8 +155,40 @@ export async function PaceTrack({
             style={{ backgroundColor: 'var(--color-ink)' }}
             aria-hidden="true"
           />
+          {/* Named at the rule, because an unlabelled line on a chart is a
+              thing the reader has to go and look up. */}
+          {size === 'hero' ? (
+            <span
+              className="absolute top-0 whitespace-nowrap text-[10px] font-medium uppercase tracking-wider text-[color:var(--color-ink)]"
+              style={{
+                left: calendarPos > 70 ? 'auto' : '4px',
+                right: calendarPos > 70 ? '4px' : 'auto',
+              }}
+              aria-hidden="true"
+            >
+              {strings.pace.calendarMarker}
+            </span>
+          ) : null}
         </div>
       </div>
+
+      {/* The scale. Only on the hero, where there is room for it to be read. */}
+      {size === 'hero' ? (
+        <div
+          className="relative mt-1 h-3 text-[10px] text-[color:var(--color-ink-faint)]"
+          aria-hidden="true"
+        >
+          {[0, 25, 50, 75, 100].map((tick) => (
+            <span
+              key={tick}
+              className="figure absolute -translate-x-1/2"
+              style={{ left: `${tick}%` }}
+            >
+              {tick === 100 ? '100%' : tick}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {showReadout && !isChip ? (
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

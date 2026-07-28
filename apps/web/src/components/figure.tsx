@@ -25,7 +25,11 @@ import { getStrings } from '@/lib/i18n-server';
 export type FigureScale = 'hero' | 'lead' | 'body' | 'dense';
 
 const SCALE_CLASSES: Record<FigureScale, string> = {
-  hero: 'text-[clamp(2.25rem,6vw,3.75rem)] font-medium leading-none tracking-tight',
+  // Bigger and tighter than a normal display figure. This is the one number
+  // the page exists to state, and the unit rides with it on one line: an
+  // orphaned "cr" on its own row makes the largest figure on the site look
+  // like a layout accident.
+  hero: 'text-[clamp(2.5rem,7vw,4.5rem)] font-medium leading-[0.95] tracking-[-0.035em] text-balance',
   lead: 'text-2xl font-medium leading-tight',
   body: 'text-base font-medium',
   dense: 'text-[13px]',

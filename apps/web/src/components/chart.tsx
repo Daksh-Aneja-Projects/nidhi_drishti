@@ -44,6 +44,10 @@ async function loadECharts() {
         charts.LineChart,
         charts.TreemapChart,
         charts.CustomChart,
+        // The variance dumbbell and the pace distribution are both scatter.
+        // echarts is tree shaken here, so a series type that is not registered
+        // renders an empty canvas with only a console warning to say why.
+        charts.ScatterChart,
         components.GridComponent,
         components.TooltipComponent,
         components.LegendComponent,
@@ -74,22 +78,28 @@ async function loadECharts() {
  *    taxonomy rather than as an untracked black box.
  */
 
+/**
+ * Literal values rather than `var(--color-*)`: echarts renders to canvas, which
+ * resolves no custom properties. These must be kept in step with the tokens in
+ * globals.css by hand, and a test pins the pair.
+ */
 export const chartTheme = {
-  ink: '#16202b',
-  inkSoft: '#48555f',
-  inkFaint: '#6f7c85',
-  paper: '#eff1ee',
-  paperRaised: '#f8f9f7',
-  paperSunk: '#e4e7e3',
-  rule: '#ccd2cc',
-  ruleStrong: '#9aa5a0',
-  behind: '#1f3a6e',
-  behindSoft: '#93a6c6',
+  ink: '#1a1512',
+  inkSoft: '#4a423c',
+  inkFaint: '#625950',
+  paper: '#ecebe6',
+  paperRaised: '#fbfaf7',
+  paperSunk: '#e2e0d8',
+  rule: '#d3d0c6',
+  ruleStrong: '#a29a8c',
+  behind: '#223a63',
+  behindSoft: '#93a3bd',
   ahead: '#a8791c',
   aheadSoft: '#d3b06a',
-  onPace: '#c9ccc4',
+  onPace: '#b4b0a4',
   seal: '#9e2b25',
-  unreported: '#a4a9a2',
+  brass: '#b98b34',
+  unreported: '#9d968c',
 } as const;
 
 /** Shared axis, grid and tooltip styling, spread into every chart option. */

@@ -16,7 +16,7 @@ from typing import Any
 import psycopg
 import structlog
 
-from pipelines.lib.fetch import FetchResult, PoliteClient
+from pipelines.lib.fetch import FetchResult, PoliteClient, Retrieval, public_url
 from pipelines.lib.runs import PipelineRun
 from pipelines.lib.storage import ArtifactRef, ObjectStore, store_raw
 
@@ -41,6 +41,10 @@ class Ingested:
         return self.fetch.text
 
     @property
+    def retrieval(self) -> Retrieval:
+        return self.fetch.retrieval
+
+    @property
     def unchanged(self) -> bool:
         """True when these exact bytes were already in the bucket.
 
@@ -61,11 +65,20 @@ def ingest_url(
     document_date: date | None = None,
     store: ObjectStore | None = None,
 ) -> Ingested:
-    """Fetch one URL politely, store the bytes, and record the provenance row."""
+    """Fetch one URL politely, store the bytes, and record the provenance row.
+
+    ``client`` is typed as :class:`PoliteClient` but only its ``get`` is used, so
+    the manual intake path substitutes its own reader here and every source
+    module gets operator-download provenance without knowing intake exists.
+    """
     result = client.get(url)
+    # From here on the URL is the published one. An API key in a query string is
+    # needed to make the request and must never survive into the bucket metadata
+    # or the provenance row, both of which are readable by everyone.
+    recorded_url = public_url(url)
     artifact = store_raw(
         source_id,
-        url,
+        recorded_url,
         result.content,
         result.content_type,
         store=store,
@@ -80,9 +93,12 @@ def ingest_url(
             conn,
             artifact=artifact,
             fetched_at=result.fetched_at,
-            document_date=document_date,
+            # A source module that read the date out of the document wins; a
+            # manual intake manifest fills the gap when it did not.
+            document_date=document_date or result.retrieval.document_date,
             pipeline_run_id=run.run_id,
-            url=url,
+            url=recorded_url,
+            retrieval=result.retrieval,
         )
 
     return Ingested(fetch=result, artifact=artifact, source_record_id=source_record_id)
@@ -95,4 +111,9 @@ def summarise_artifacts(items: Sequence[Ingested]) -> dict[str, Any]:
         "artifacts_new": sum(1 for item in items if not item.unchanged),
         "bytes_fetched": sum(item.artifact.byte_size for item in items),
         "artifact_keys": [item.artifact.key for item in items][:20],
+        # Surfaces on the ops page: a source that has quietly become entirely
+        # hand-fed is a source whose automation has broken.
+        "artifacts_operator_download": sum(
+            1 for item in items if item.retrieval.method == "operator_download"
+        ),
     }

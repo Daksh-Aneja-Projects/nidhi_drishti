@@ -312,6 +312,10 @@ def run(
             outcome.drift = [finding.to_jsonable() for finding in findings]
             run_ctx.abort_if_drifted(findings)
 
+            if resolve_ministry is None:
+                from pipelines.lib.db import load_alias_map
+
+                resolve_ministry = load_alias_map(conn, "ministry")
             facts, unresolved = to_facts(validated, resolve_ministry=resolve_ministry)
             outcome.parse_errors += len(unresolved)
             if conn is not None and not run_ctx.dry_run and ingested.source_record_id is not None:

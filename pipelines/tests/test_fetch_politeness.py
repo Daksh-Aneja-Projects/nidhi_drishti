@@ -16,6 +16,7 @@ from pipelines.lib.fetch import (
     FetchError,
     HttpStatusError,
     RobotsDisallowed,
+    public_url,
 )
 from pipelines.tests.conftest import RecordingSleeper, make_client
 
@@ -255,3 +256,45 @@ class TestFetchResult:
         assert result.byte_size == len(b"<html>x</html>")
         assert result.fetched_at.tzinfo is not None
         assert "html" in result.text
+
+    def test_an_ordinary_fetch_is_recorded_as_automated(self, settings: Settings) -> None:
+        with make_client(settings, handler_for(), RecordingSleeper()) as client:
+            result = client.get("https://cga.nic.in/report")
+        assert result.retrieval.method == "automated"
+        assert result.retrieval.by is None
+
+
+class TestCredentialRedaction:
+    """api.data.gov.in takes its key in the query string and offers no header
+    alternative, so the key is in the request URL by necessity. ``source_record.url``
+    is published in the provenance popover, which makes anything stored from that
+    URL public. These tests are the guard."""
+
+    def test_an_api_key_is_stripped_from_a_recorded_url(self) -> None:
+        cleaned = public_url("https://api.data.gov.in/resource/abc?api-key=SECRET&format=json")
+        assert "SECRET" not in cleaned
+        assert "format=json" in cleaned
+        assert "api-key=REDACTED" in cleaned
+
+    @pytest.mark.parametrize(
+        "param",
+        ["api-key", "api_key", "apikey", "key", "token", "access_token"],
+    )
+    def test_every_known_credential_parameter_is_stripped(self, param: str) -> None:
+        assert "SECRET" not in public_url(f"https://example.gov.in/x?{param}=SECRET")
+
+    def test_a_url_without_a_credential_is_left_exactly_alone(self) -> None:
+        # Byte-identical, because this URL is shown to readers as the link they
+        # follow to check a figure, and a re-encoded one may not resolve.
+        url = "https://www.indiabudget.gov.in/doc/eb/sumsbe.pdf"
+        assert public_url(url) == url
+        with_query = "https://cga.nic.in/report.aspx?month=04&year=2026"
+        assert public_url(with_query) == with_query
+
+    def test_a_failed_request_does_not_leak_the_key_in_its_error(self, settings: Settings) -> None:
+        handler = handler_for(status=404)
+        with make_client(settings, handler, RecordingSleeper()) as client:
+            with pytest.raises(HttpStatusError) as caught:
+                client.get("https://api.data.gov.in/resource/abc?api-key=SECRET")
+        assert "SECRET" not in str(caught.value)
+        assert "SECRET" not in caught.value.url

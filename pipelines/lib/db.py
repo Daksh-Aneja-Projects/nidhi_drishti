@@ -29,6 +29,7 @@ from psycopg.rows import dict_row
 
 from pipelines.lib.config import Settings, get_settings, require_known_source
 from pipelines.lib.drift import RunMetrics
+from pipelines.lib.fetch import AUTOMATED, Retrieval
 from pipelines.lib.models import FiscalFactRow, TenderRow
 from pipelines.lib.storage import ArtifactRef
 
@@ -151,12 +152,18 @@ def record_source_record(
     document_date: date | None = None,
     pipeline_run_id: int | None = None,
     url: str | None = None,
+    retrieval: Retrieval = AUTOMATED,
 ) -> int:
     """Record one fetched artifact and return its ``source_record_id``.
 
     The unique key is ``(source_id, artifact_sha256)``: identical bytes fetched
     twice are the same record, so this is idempotent and the second fetch does
     not create a second provenance chain for the same document.
+
+    ``retrieval`` says how the bytes were obtained. It is written rather than
+    assumed because the provenance popover states it to the reader, and a
+    hand-downloaded document described as an automated fetch is a small lie in
+    the one part of the product that cannot afford any.
     """
     require_known_source(artifact.source_id)
     with conn.cursor() as cur:
@@ -164,12 +171,17 @@ def record_source_record(
             """
             INSERT INTO source_record
               (source_id, url, artifact_key, artifact_sha256, document_date,
-               fetched_at, content_type, byte_size, pipeline_run_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+               fetched_at, content_type, byte_size, pipeline_run_id,
+               retrieval_method, retrieved_by, retrieval_note)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (source_id, artifact_sha256) DO UPDATE
               SET document_date   = COALESCE(EXCLUDED.document_date, source_record.document_date),
                   pipeline_run_id = COALESCE(EXCLUDED.pipeline_run_id,
-                                             source_record.pipeline_run_id)
+                                             source_record.pipeline_run_id),
+                  retrieval_method = EXCLUDED.retrieval_method,
+                  retrieved_by     = EXCLUDED.retrieved_by,
+                  retrieval_note   = COALESCE(EXCLUDED.retrieval_note,
+                                              source_record.retrieval_note)
             RETURNING source_record_id
             """,
             (
@@ -182,6 +194,9 @@ def record_source_record(
                 artifact.content_type,
                 artifact.byte_size,
                 pipeline_run_id,
+                retrieval.method,
+                retrieval.by,
+                retrieval.note,
             ),
         )
         row = cur.fetchone()
@@ -194,6 +209,72 @@ def record_source_record(
         sha256=artifact.sha256[:12],
     )
     return source_record_id
+
+
+# ---------------------------------------------------------------------------
+# entity resolution
+# ---------------------------------------------------------------------------
+
+#: docs/04 section 2: a mapping below this confidence is a machine guess waiting
+#: for a human, and it never resolves a figure.
+TRUSTED_ALIAS_CONFIDENCE = Decimal("0.9")
+
+
+def load_alias_map(
+    conn: psycopg.Connection[dict[str, Any]] | None,
+    entity_type: str,
+    *,
+    min_confidence: Decimal = TRUSTED_ALIAS_CONFIDENCE,
+) -> dict[str, str]:
+    """Normalised name -> stable entity id, for the exact matcher.
+
+    Keyed by :func:`normalise_org_name` because that is the form the source
+    modules present: the table stores the alias as it was written in some
+    document, and "M/o Jal Shakti" has to find the same bucket as "Ministry of
+    Jal Shakti".
+
+    Returns an empty map for ``conn is None`` so a dry run behaves exactly as it
+    did before, reporting every row as unresolved rather than inventing a
+    mapping it cannot check.
+    """
+    if conn is None:
+        return {}
+
+    from pipelines.parsers.text_norm import normalise_org_name
+
+    mapping: dict[str, str] = {}
+    with conn.cursor() as cur:
+        # Ordered so that a collision resolves the same way on every run. Two
+        # aliases that normalise identically but point at different entities is
+        # a data problem in the seed, and a run that picked a different winner
+        # each time would make it maddening to find.
+        cur.execute(
+            """
+            SELECT alias, entity_id
+            FROM entity_alias
+            WHERE entity_type = %s AND confidence >= %s
+            ORDER BY alias
+            """,
+            (entity_type, min_confidence),
+        )
+        for row in cur.fetchall():
+            key = normalise_org_name(str(row["alias"]))
+            if not key:
+                continue
+            existing = mapping.get(key)
+            if existing is not None and existing != row["entity_id"]:
+                log.warning(
+                    "alias.collision",
+                    entity_type=entity_type,
+                    normalised=key,
+                    kept=existing,
+                    ignored=row["entity_id"],
+                )
+                continue
+            mapping[key] = str(row["entity_id"])
+
+    log.info("alias.map_loaded", entity_type=entity_type, aliases=len(mapping))
+    return mapping
 
 
 # ---------------------------------------------------------------------------

@@ -312,6 +312,12 @@ def run(
             run_ctx.abort_if_drifted(findings)
 
             # 6. upsert into the canonical store.
+            # See union_budget: an unresolved run writes nothing while looking
+            # like a success, so the map is loaded rather than expected.
+            if resolve_ministry is None:
+                from pipelines.lib.db import load_alias_map
+
+                resolve_ministry = load_alias_map(conn, "ministry")
             facts, unresolved = to_facts(validated, resolve_ministry=resolve_ministry)
             outcome.parse_errors += len(unresolved)
             if conn is not None and not run_ctx.dry_run and ingested.source_record_id is not None:

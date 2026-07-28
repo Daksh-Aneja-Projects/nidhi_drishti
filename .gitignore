@@ -25,8 +25,18 @@ uv.lock
 !.env.example
 
 # Local data & artifacts
-/data/
+/data/*
 /tmp/
+
+# The intake drop directories and their instructions are part of the repo; the
+# documents dropped into them are somebody's local copy of a government file and
+# are not ours to redistribute (docs/08 section 5).
+!/data/intake/
+/data/intake/*
+!/data/intake/README.md
+!/data/intake/*/
+/data/intake/*/*
+!/data/intake/*/.gitkeep
 .artifacts/
 *.log
 

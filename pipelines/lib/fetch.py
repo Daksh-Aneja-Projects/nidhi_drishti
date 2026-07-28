@@ -22,9 +22,10 @@ import time
 import urllib.robotparser
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from types import TracebackType
-from urllib.parse import urlparse
+from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
 import structlog
@@ -89,6 +90,33 @@ class HttpStatusError(FetchError):
         self.body_excerpt = body_excerpt
 
 
+#: How an artifact came into our hands. ``automated`` is this client fetching a
+#: public URL. ``operator_download`` is a named person downloading the document
+#: from the portal in a browser and handing it to the intake path, which is what
+#: docs/08 section 1 already contemplates for sources that disallow or block
+#: automated access. The distinction is carried all the way to the provenance
+#: popover: a reader is entitled to know which one produced a figure.
+RetrievalMethod = Literal["automated", "operator_download"]
+
+
+@dataclass(frozen=True, slots=True)
+class Retrieval:
+    """Provenance of the retrieval itself, as opposed to of the document."""
+
+    method: RetrievalMethod = "automated"
+    #: Who performed a manual download. Required for ``operator_download`` and
+    #: meaningless for an automated fetch, which is nobody in particular.
+    by: str | None = None
+    #: The date the document states for itself, when the retrieval knows it.
+    #: An automated fetch usually does not and leaves the source module to say.
+    document_date: date | None = None
+    note: str | None = None
+
+
+#: Shared instance for the ordinary case, so the common path allocates nothing.
+AUTOMATED = Retrieval()
+
+
 @dataclass(frozen=True, slots=True)
 class FetchResult:
     """One fetched artifact, before it is stored or parsed."""
@@ -100,6 +128,7 @@ class FetchResult:
     content_type: str
     fetched_at: datetime
     headers: Mapping[str, str] = field(default_factory=dict)
+    retrieval: Retrieval = AUTOMATED
 
     @property
     def text(self) -> str:
@@ -110,6 +139,61 @@ class FetchResult:
     @property
     def byte_size(self) -> int:
         return len(self.content)
+
+
+#: Query parameters that carry a credential. api.data.gov.in takes its key this
+#: way and offers no header alternative, so the key reaches the request URL by
+#: necessity. It must not reach the database: ``source_record.url`` is published
+#: in the provenance popover, and a key in there is a key on the public web.
+SECRET_QUERY_PARAMS = frozenset({"api-key", "api_key", "apikey", "key", "token", "access_token"})
+
+#: What a redacted value is replaced with. Visible on purpose: a reader seeing
+#: this knows a credential was used, rather than wondering why the URL they were
+#: given returns 403 when they try it.
+REDACTED = "REDACTED"
+
+
+def public_url(url: str) -> str:
+    """The form of ``url`` that is safe to store and to show a reader.
+
+    Applied at the recording boundary rather than asked of each source module,
+    because "remember to redact" is a rule that holds until the day somebody
+    adds a source in a hurry.
+    """
+    parsed = urlparse(url)
+    if not parsed.query:
+        return url
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    if not any(name.lower() in SECRET_QUERY_PARAMS for name, _ in pairs):
+        return url
+    cleaned = [
+        (name, REDACTED if name.lower() in SECRET_QUERY_PARAMS else value) for name, value in pairs
+    ]
+    return urlunparse(parsed._replace(query=urlencode(cleaned)))
+
+
+def check_public_url(url: str) -> None:
+    """Raise unless ``url`` is one an anonymous visitor could open.
+
+    Module level rather than a client method because the manual intake path has
+    to apply the identical test to the URL an operator declares. One gate, so a
+    document can never enter the evidence chain attributed to a login flow just
+    because a human, rather than the client, did the downloading.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise FetchError(f"Refusing non-HTTP URL {url!r}.")
+    if not parsed.netloc:
+        raise FetchError(f"Refusing URL without a host: {url!r}")
+    if parsed.username or parsed.password:
+        raise AccessControlled(f"Refusing URL carrying credentials: {parsed.netloc}")
+    lowered = url.lower()
+    for fragment in BLOCKED_URL_FRAGMENTS:
+        if fragment in lowered:
+            raise AccessControlled(
+                f"Refusing {url!r}: it looks like an authentication or CAPTCHA flow. "
+                f"docs/08 permits only what the site serves an anonymous visitor."
+            )
 
 
 class _HostThrottle:
@@ -225,20 +309,7 @@ class PoliteClient:
 
     @staticmethod
     def _check_url(url: str) -> None:
-        parsed = urlparse(url)
-        if parsed.scheme not in {"http", "https"}:
-            raise FetchError(f"Refusing non-HTTP URL {url!r}.")
-        if not parsed.netloc:
-            raise FetchError(f"Refusing URL without a host: {url!r}")
-        if parsed.username or parsed.password:
-            raise AccessControlled(f"Refusing URL carrying credentials: {parsed.netloc}")
-        lowered = url.lower()
-        for fragment in BLOCKED_URL_FRAGMENTS:
-            if fragment in lowered:
-                raise AccessControlled(
-                    f"Refusing {url!r}: it looks like an authentication or CAPTCHA flow. "
-                    f"docs/08 permits only what the site serves an anonymous visitor."
-                )
+        check_public_url(url)
 
     @staticmethod
     def _check_headers(headers: Mapping[str, str] | None) -> None:
@@ -328,15 +399,15 @@ class PoliteClient:
             try:
                 response = self._client.request(method, url, params=params, headers=headers)
             except httpx.HTTPError as exc:
-                raise FetchError(f"{method} {url} failed: {exc}") from exc
+                raise FetchError(f"{method} {public_url(url)} failed: {exc}") from exc
             self.requests_made += 1
 
             if response.status_code in RETRYABLE_STATUSES:
-                raise HttpStatusError(url, response.status_code, response.text[:200])
+                raise HttpStatusError(public_url(url), response.status_code, response.text[:200])
             if response.status_code >= 400:
                 # Not retried. A 404 on a government portal usually means the
                 # page moved, which is a drift signal for the source module.
-                raise HttpStatusError(url, response.status_code, response.text[:200])
+                raise HttpStatusError(public_url(url), response.status_code, response.text[:200])
 
             # Redirects are followed, so the URL that was vetted before the
             # request is not necessarily the URL that answered. This is not
@@ -368,7 +439,9 @@ class PoliteClient:
         result: FetchResult = retrying(attempt)
         log.info(
             "fetch.ok",
-            url=url,
+            # Logs reach Sentry and the ops page. Redacted here for the same
+            # reason it is redacted before storage.
+            url=public_url(url),
             status=result.status_code,
             bytes=result.byte_size,
             content_type=result.content_type,

@@ -43,7 +43,21 @@ SOURCE_MODULES: dict[str, str] = {
 
 def load_runner(name: str) -> Callable[..., Any]:
     """Return the ``run`` callable for a pipeline name."""
+    return _load_module(name).run  # type: ignore[no-any-return]
+
+
+def source_id_for(name: str) -> str:
+    """The registry id a pipeline writes for.
+
+    Pipeline names and registry ids deliberately differ (``pfms_published`` is
+    the module, ``pfms_pub`` is the registry id), so anything keyed by the
+    registry, including the intake drop directories and the object store,
+    resolves through here rather than guessing.
+    """
+    return str(_load_module(name).SOURCE_ID)
+
+
+def _load_module(name: str) -> Any:
     if name not in SOURCE_MODULES:
         raise KeyError(f"Unknown pipeline {name!r}. Known: {', '.join(sorted(SOURCE_MODULES))}")
-    module = import_module(SOURCE_MODULES[name])
-    return module.run  # type: ignore[no-any-return]
+    return import_module(SOURCE_MODULES[name])

@@ -17,8 +17,17 @@ from typing import Any
 import structlog
 
 from pipelines.lib.config import get_settings
+from pipelines.lib.local_intake import (
+    INTAKE_ROOT,
+    IntakeError,
+    LocalFileClient,
+    default_url_for,
+    discover_documents,
+    load_document,
+    write_manifest_template,
+)
 from pipelines.lib.observability import init_observability, set_run_context
-from pipelines.sources import SOURCE_MODULES, load_runner
+from pipelines.sources import SOURCE_MODULES, load_runner, source_id_for
 
 
 def configure_logging(*, json_output: bool) -> None:
@@ -62,6 +71,44 @@ def build_parser() -> argparse.ArgumentParser:
         "--as-of",
         help="ISO date the snapshot represents (pfms_published, gem_stats)",
     )
+    run_parser.add_argument(
+        "--from-file",
+        action="append",
+        metavar="PATH",
+        help=(
+            "ingest a document downloaded by hand instead of fetching it. Each file needs a "
+            "<file>.manifest.json beside it. Repeatable. See data/intake/README.md"
+        ),
+    )
+    run_parser.add_argument(
+        "--from-intake",
+        action="store_true",
+        help="ingest every manifested document dropped in data/intake/<source>/",
+    )
+    run_parser.add_argument(
+        "--manifest",
+        help="manifest for a single --from-file, when it does not sit beside the document",
+    )
+
+    intake_parser = sub.add_parser("intake", help="prepare and inspect hand-downloaded documents")
+    intake_sub = intake_parser.add_subparsers(dest="intake_command", required=True)
+
+    template_parser = intake_sub.add_parser(
+        "template", help="write a manifest skeleton beside a dropped file"
+    )
+    template_parser.add_argument("path", help="the document that was downloaded")
+    template_parser.add_argument("--url", default="", help="the public URL it came from")
+    template_parser.add_argument("--by", default="", help="who downloaded it")
+
+    check_parser = intake_sub.add_parser(
+        "check", help="validate dropped documents without ingesting anything"
+    )
+    check_parser.add_argument(
+        "source",
+        nargs="?",
+        choices=sorted(SOURCE_MODULES),
+        help="check one source's drop directory; omit to check every one",
+    )
     return parser
 
 
@@ -91,6 +138,74 @@ def _kwargs_for(name: str, args: argparse.Namespace) -> dict[str, Any]:
     return kwargs
 
 
+def _intake_client_for(args: argparse.Namespace) -> LocalFileClient | None:
+    """Build the disk-backed client when the run is a manual intake.
+
+    Returns None for an ordinary run, which is the only case where the pipeline
+    is allowed to touch the network.
+    """
+    from_file = getattr(args, "from_file", None) or []
+    if not from_file and not getattr(args, "from_intake", False):
+        return None
+    if from_file and getattr(args, "from_intake", False):
+        raise SystemExit("Use either --from-file or --from-intake, not both.")
+
+    if from_file:
+        if args.manifest and len(from_file) > 1:
+            raise SystemExit("--manifest applies to a single --from-file.")
+        documents = [
+            load_document(path, manifest=args.manifest if len(from_file) == 1 else None)
+            for path in from_file
+        ]
+    else:
+        source_id = source_id_for(args.name)
+        documents = discover_documents(source_id)
+        if not documents:
+            raise SystemExit(
+                f"Nothing to ingest: no manifested documents in {INTAKE_ROOT / source_id}. "
+                f"See data/intake/README.md."
+            )
+    return LocalFileClient(documents)
+
+
+def _intake_command(args: argparse.Namespace) -> int:
+    """``intake template`` and ``intake check``: the operator-facing half."""
+    if args.intake_command == "template":
+        target = write_manifest_template(args.path, source_url=args.url, by=args.by)
+        print(f"wrote {target}")
+        print("Fill in source_url and retrieved_by before running the pipeline.")
+        return 0
+
+    names = [args.source] if args.source else sorted(SOURCE_MODULES)
+    problems = 0
+    total = 0
+    for name in names:
+        source_id = source_id_for(name)
+        directory = INTAKE_ROOT / source_id
+        try:
+            documents = discover_documents(source_id)
+        except IntakeError as exc:
+            problems += 1
+            print(f"{name:<18} PROBLEM  {exc}")
+            continue
+        if not documents and not args.source:
+            continue
+        if not documents:
+            print(f"{name:<18} empty    {directory}")
+            continue
+        for document in documents:
+            total += 1
+            manifest = document.manifest
+            print(
+                f"{name:<18} ok       {document.path.name}\n"
+                f"{'':<18}          url={manifest.source_url}\n"
+                f"{'':<18}          retrieved={manifest.retrieved_at.isoformat()} "
+                f"by {manifest.retrieved_by}"
+            )
+    print(f"\n{total} document(s) ready, {problems} problem(s).")
+    return 1 if problems else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     configure_logging(json_output=bool(args.json_logs))
@@ -105,11 +220,38 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {name:<18} {module}")
         return 0
 
+    if args.command == "intake":
+        try:
+            return _intake_command(args)
+        except IntakeError as exc:
+            # A manifest problem is an operator mistake, not a crash. A
+            # traceback here would bury the one line that says what to fix.
+            print(f"intake: {exc}", file=sys.stderr)
+            return 1
+
     # Tags every event this run produces with the source id, so a crash in
     # Sentry is attributable without cross-referencing the pipeline_run table.
     set_run_context(source_id=args.name)
     runner = load_runner(args.name)
     kwargs = _kwargs_for(args.name, args)
+
+    try:
+        intake_client = _intake_client_for(args)
+    except IntakeError as exc:
+        print(f"intake: {exc}", file=sys.stderr)
+        return 1
+    if intake_client is not None:
+        kwargs["client"] = intake_client
+        # Point the pipeline at a document the operator actually downloaded,
+        # rather than at its own default entry point, which nothing can serve.
+        # obi_historical takes its entry point as --csv-url and has no url
+        # parameter at all.
+        if args.name != "obi_historical" and "url" not in kwargs:
+            kwargs["url"] = default_url_for(intake_client.documents)
+        print(
+            f"intake: {len(intake_client.documents)} hand-downloaded document(s); "
+            f"nothing will be fetched over the network."
+        )
 
     if args.dry_run:
         outcome = runner(**kwargs)

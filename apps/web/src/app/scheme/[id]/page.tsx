@@ -23,6 +23,7 @@ import {
   PageShell,
   Section,
 } from '@/components/layout-primitives';
+import { NoFiguresNotice } from '@/components/no-figures-notice';
 import { Link } from '@/components/locale-link';
 import { TenderList } from '@/components/tender-list';
 import { formatFiscalYearLong } from '@/lib/format';
@@ -147,6 +148,15 @@ export default async function SchemePage({
   }
 
   const { scheme, fy } = data;
+
+  // Whether any of the three stages has a figure at all. With none of them the
+  // panels below render as a chart of nothing beside three cards that each say
+  // "Not reported", and that reads as a page that failed rather than as a
+  // source that has not published.
+  const hasAnyFigure =
+    !isNotReported(scheme.allocation) ||
+    !isNotReported(scheme.released) ||
+    !isNotReported(scheme.utilized);
   const releasedPct = percentOf(scheme.released, scheme.allocation);
 
   const stages: StageDatum[] = [
@@ -190,6 +200,7 @@ export default async function SchemePage({
         </Link>
       </nav>
 
+      {hasAnyFigure ? (
       <Section title={strings.scheme.stagesTitle} help={strings.scheme.stagesHelp}>
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
           <StageBars
@@ -257,6 +268,14 @@ export default async function SchemePage({
           </div>
         ) : null}
       </Section>
+
+      ) : (
+        <NoFiguresNotice
+          title={strings.scheme.noFiguresTitle}
+          body={strings.scheme.noFiguresBody}
+          sourcesLabel={strings.scheme.noFiguresSources}
+        />
+      )}
 
       <Section
         title={strings.scheme.tendersTitle}

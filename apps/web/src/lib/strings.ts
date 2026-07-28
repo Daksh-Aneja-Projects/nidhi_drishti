@@ -316,6 +316,10 @@ export const strings = {
   },
 
   scheme: {
+    noFiguresTitle: 'No figures published for this scheme in this year',
+    noFiguresBody:
+      'Allocation, releases and utilisation are all unreported for this year. Scheme level figures come from the budget statements and the payment system, and neither has been ingested for this scheme yet. This says nothing about whether the scheme spent money, only that we have not yet read a source that states it.',
+    noFiguresSources: 'See which sources are ingested',
     stagesTitle: 'Allocation, releases and utilisation',
     stagesHelp:
       'These are three different stages of the same rupee. Money can be allocated but not released, and released but not yet reported as utilised.',

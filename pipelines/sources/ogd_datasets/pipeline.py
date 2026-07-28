@@ -71,6 +71,13 @@ class ColumnSpec:
     fy: str
     stage: str
     is_cumulative: bool = False
+    #: The window a period-bearing figure covers. A column headed "upto Dec
+    #: 2023" is nine months of spending, and letting it default to the end of
+    #: the fiscal year would tell the site that a ministry had until March to
+    #: spend what it has already been measured against December. The spending
+    #: pace on every ministry page is computed from this date.
+    period_start: date | None = None
+    period_end: date | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +197,39 @@ DATASETS: dict[str, DatasetSpec] = {
     # whose names differ by a single underscore, one of which is empty. Reading
     # only the totals sidesteps a naming collision that nothing in the response
     # explains.
+    # Ministry-wise revised estimate and the expenditure measured against it,
+    # laid before Parliament for 2023-24. The one resource on the platform that
+    # carries both halves of this product's central comparison at ministry
+    # level, for 57 ministries.
+    #
+    # The expenditure column is headed "upto Dec 2023", so it is nine months and
+    # is recorded as such. Letting it default to the end of the fiscal year
+    # would credit each ministry with three months of spending nobody has
+    # reported, and overstate every spending pace on the site.
+    "ministry_wise_utilisation": DatasetSpec(
+        resource_id="aaada741-ac41-4973-8210-d38bd3208a82",
+        title="Ministry-wise utilisation of budget allocation, 2023-24",
+        entity_type="ministry",
+        stage="RE",
+        # Stated in the field name itself: "actual_expenditure__rs__in_crore".
+        unit=CRORE,
+        entity_field="name_of_ministry",
+        columns=(
+            ColumnSpec(
+                field="revised_estimate__re____2023_24",
+                fy="FY2024",
+                stage="RE",
+            ),
+            ColumnSpec(
+                field="actual_expenditure__rs__in_crore____upto_dec_2023",
+                fy="FY2024",
+                stage="EXPENDITURE",
+                is_cumulative=True,
+                period_start=date(2023, 4, 1),
+                period_end=date(2023, 12, 31),
+            ),
+        ),
+    ),
     # NOT REGISTERED: the "Total" rows of the resource below, as a ministry
     # allocation.
     #
@@ -231,6 +271,9 @@ class OgdRecordRow(BaseModel):
     amount_inr_cr: Decimal
     is_cumulative: bool = False
     updated_date: date | None = None
+    #: Set when the column states the window it covers, as "upto Dec 2023" does.
+    period_start: date | None = None
+    period_end: date | None = None
 
 
 def parse_resource_payload(
@@ -399,6 +442,8 @@ def _parse_wide_records(
                     "amount_inr_cr": amount,
                     "is_cumulative": column.is_cumulative,
                     "updated_date": updated,
+                    "period_start": column.period_start,
+                    "period_end": column.period_end,
                 }
             )
 
@@ -460,7 +505,12 @@ def to_facts(
         if row.stage not in {"BE", "RE", "SUPPLEMENTARY"}:
             from pipelines.parsers.fy_dates import fy_end
 
-            period_end = fy_end(row.fy)
+            # The column's own stated window wins. Falling back to the end of
+            # the fiscal year is only right for a figure that covers the whole
+            # year; for "upto Dec 2023" it would claim three months of spending
+            # that has not been reported, and the pace shown on every ministry
+            # page is computed from this date.
+            period_end = row.period_end or fy_end(row.fy)
         facts.append(
             FiscalFactRow(
                 fy=row.fy,
@@ -468,6 +518,7 @@ def to_facts(
                 entity_id=entity_id,
                 stage=row.stage,  # type: ignore[arg-type]
                 head="total",
+                period_start=row.period_start,
                 period_end=period_end,
                 is_cumulative=row.is_cumulative,
                 amount_inr_cr=row.amount_inr_cr,

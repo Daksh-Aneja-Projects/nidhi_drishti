@@ -210,12 +210,23 @@ describeDb('view invariants', () => {
     }
 
     for (const [entityId, series] of byEntity) {
-      const cumulative = series.map((row) => parseAmountCr(row.cumulative_amount));
+      // Laid out by fiscal month, not compacted. decumulate() reads position as
+      // the month (slot 0 is April), while the view reads the real
+      // fiscal_month_index, so a compacted array would hand a December figure
+      // to the code path meant for April and disagree for any sparse series.
+      // A source that publishes once, nine months in, is exactly that.
+      const cumulative: Array<Amount> = Array.from({ length: 12 }, () => NOT_REPORTED);
+      const reported: Array<Amount> = Array.from({ length: 12 }, () => NOT_REPORTED);
+      for (const row of series) {
+        const slot = Number(row.fiscal_month_index) - 1;
+        if (slot < 0 || slot > 11) continue;
+        cumulative[slot] = parseAmountCr(row.cumulative_amount);
+        reported[slot] = parseAmountCr(row.monthly_amount);
+      }
       const expected = decumulate(cumulative).map((r) => r.monthly);
-      const actual = series.map((row) => parseAmountCr(row.monthly_amount));
       for (let i = 0; i < expected.length; i += 1) {
         const want = expected[i]!;
-        const got = actual[i]!;
+        const got = reported[i]!;
         if (isNotReported(want)) expect(got, `${entityId} month ${i + 1}`).toBe(NOT_REPORTED);
         else expect(got as number, `${entityId} month ${i + 1}`).toBeCloseTo(want, 2);
       }

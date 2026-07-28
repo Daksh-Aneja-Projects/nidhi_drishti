@@ -297,6 +297,23 @@ describeDb('provenance reaches the interface', () => {
     expect((await getProvenanceMap([asNumber])).size).toBe(1);
   });
 
+  it('defaults to a year that has both an allocation and a spend figure', async () => {
+    // The front page is spend against authority. A year with actuals but no
+    // budget renders empty, which reads as "no data" beside a database that
+    // has plenty.
+    const fy = await getDefaultFiscalYear();
+    if (!fy) return;
+    const row = await queryOne<{ has_alloc: boolean; has_spend: boolean }>(
+      `SELECT BOOL_OR(stage IN ('BE','RE','SUPPLEMENTARY')) AS has_alloc,
+              BOOL_OR(stage = 'EXPENDITURE') AS has_spend
+       FROM fiscal_fact WHERE fy = $1`,
+      [fy],
+    );
+    // Allocation is the one that must be there. Expenditure legitimately has
+    // not been published yet for the current year, and saying so is the point.
+    expect(row?.has_alloc, `${fy} was chosen with no allocation`).toBe(true);
+  });
+
   it('reports how a document was obtained, not only what it was', async () => {
     // A hand-downloaded document is real evidence, but it does not refresh on a
     // schedule the way an automated source does. The reader is told which.
@@ -357,11 +374,17 @@ describeDb('provenance reaches the interface', () => {
     if (!fy) return;
     const national = await getNationalSummary(fy);
     if (!national) return;
-    // The hero figures on the front page. If either of these is null, the
-    // provenance popover renders "no source record" under the most visible
-    // numbers on the site.
-    expect(national.provenance.authority, 'authority provenance').not.toBeNull();
-    expect(national.provenance.expenditure, 'expenditure provenance').not.toBeNull();
+    // The hero figures on the front page. The invariant is that a figure which
+    // is shown has its evidence attached, not that both figures exist: a year
+    // whose actuals the CGA has not published yet legitimately has no
+    // expenditure at all, and saying "Not reported" for it is the product
+    // working. A number without provenance is the failure.
+    if (!isNotReported(national.currentAuthority)) {
+      expect(national.provenance.authority, 'authority provenance').not.toBeNull();
+    }
+    if (!isNotReported(national.expenditureToDate)) {
+      expect(national.provenance.expenditure, 'expenditure provenance').not.toBeNull();
+    }
   });
 
   it('attaches provenance to every ministry row that reports a figure', async () => {

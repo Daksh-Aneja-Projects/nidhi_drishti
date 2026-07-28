@@ -132,13 +132,29 @@ export async function listFiscalYearsWithData(): Promise<FiscalYear[]> {
 
 /** The FY the site defaults to: the most recent one with any expenditure reported. */
 export async function getDefaultFiscalYear(): Promise<FiscalYear | null> {
-  const row = await queryOne<{ fy: string }>(
+  // Every headline on the site is spend against authority, so the year worth
+  // landing on is the most recent one that has both. Picking on expenditure
+  // alone lands on a year whose allocation has not been ingested yet, and the
+  // page renders empty next to a database that has plenty to show. Preference
+  // order: both stages, then an allocation, then anything at all.
+  const preferred = await queryOne<{ fy: string }>(
     `SELECT fy FROM fiscal_fact
-     WHERE stage = 'EXPENDITURE'
+     GROUP BY fy
+     HAVING BOOL_OR(stage = 'EXPENDITURE')
+        AND BOOL_OR(stage IN ('BE', 'RE', 'SUPPLEMENTARY'))
      ORDER BY fy DESC
      LIMIT 1`,
   );
-  if (row) return row.fy as FiscalYear;
+  if (preferred) return preferred.fy as FiscalYear;
+
+  const allocated = await queryOne<{ fy: string }>(
+    `SELECT fy FROM fiscal_fact
+     WHERE stage IN ('BE', 'RE', 'SUPPLEMENTARY')
+     ORDER BY fy DESC
+     LIMIT 1`,
+  );
+  if (allocated) return allocated.fy as FiscalYear;
+
   const fallback = await queryOne<{ fy: string }>(
     `SELECT fy FROM fiscal_fact ORDER BY fy DESC LIMIT 1`,
   );

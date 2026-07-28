@@ -117,6 +117,14 @@ def build_parser() -> argparse.ArgumentParser:
     search_parser.add_argument("query", help="words to match in the title, for example 'budget'")
     search_parser.add_argument("--limit", type=int, default=20)
     search_parser.add_argument("--offset", type=int, default=0)
+    search_parser.add_argument(
+        "--include-community",
+        action="store_true",
+        help=(
+            "also show tables uploaded by other portal users. Excluded by default: a figure has "
+            "to come from the institution that issued it"
+        ),
+    )
 
     inspect_parser = ogd_sub.add_parser(
         "inspect", help="show one resource's field names and a sample value for each"
@@ -225,7 +233,12 @@ def _ogd_command(args: argparse.Namespace) -> int:
 
     try:
         if args.ogd_command == "search":
-            entries = search_datasets(args.query, limit=args.limit, offset=args.offset)
+            entries = search_datasets(
+                args.query,
+                limit=args.limit,
+                offset=args.offset,
+                official_only=not args.include_community,
+            )
             if not entries:
                 print(f"No resources matched {args.query!r}.")
                 return 1

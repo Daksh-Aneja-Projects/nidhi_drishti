@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlencode
 
 import structlog
 
@@ -32,6 +33,13 @@ log = structlog.get_logger(__name__)
 #: The catalogue endpoint. Undocumented in places and generous with its field
 #: names, so everything read out of it is defensive.
 CATALOG_URL = "https://api.data.gov.in/lists"
+
+#: Anyone with an account can publish a chart's backing table to
+#: visualize.data.gov.in, and those land in the same catalogue as the ministries'
+#: own releases. They are excluded by default: a figure published here has to
+#: come from the institution that issued it, not from another member of the
+#: public. Pass ``official_only=False`` to see them.
+COMMUNITY_SOURCE = "visualize.data.gov.in"
 
 #: Fields the catalogue has used for a resource's own id, in the order we try
 #: them. `index_name` is the current one; the others appear in older responses
@@ -78,8 +86,10 @@ def _api_url(base: str, settings: Settings, **params: str | int) -> str:
             "OGD_API_KEY is not set. The key is free: log in at data.gov.in, open My Account, and "
             "use 'Generate Your New API KEY'."
         )
-    query = "&".join(f"{key}={value}" for key, value in params.items())
-    return f"{base}?api-key={settings.ogd_api_key}&format=json&{query}"
+    # Values are percent-encoded: filter values carry spaces, and an unencoded
+    # space truncates the query at the portal's end without saying so.
+    query = urlencode({"api-key": settings.ogd_api_key, "format": "json", **params})
+    return f"{base}?{query}"
 
 
 def parse_catalog_payload(payload: str | bytes) -> list[CatalogEntry]:
@@ -117,20 +127,19 @@ def search_datasets(
     settings: Settings | None = None,
     limit: int = 20,
     offset: int = 0,
+    official_only: bool = True,
 ) -> list[CatalogEntry]:
-    """Search the catalogue by keyword."""
+    """Search the catalogue by keyword, official publications first."""
     resolved = settings or get_settings()
     owns_client = client is None
     http = client or PoliteClient(resolved)
+    params: dict[str, str | int] = {"limit": limit, "offset": offset}
+    if query:
+        params["filters[title]"] = query
+    if official_only:
+        params["notfilters[source]"] = COMMUNITY_SOURCE
     try:
-        url = _api_url(
-            CATALOG_URL,
-            resolved,
-            limit=limit,
-            offset=offset,
-            **({"filters[title]": query} if query else {}),
-        )
-        result = http.get(url)
+        result = http.get(_api_url(CATALOG_URL, resolved, **params))
     finally:
         if owns_client:
             http.close()

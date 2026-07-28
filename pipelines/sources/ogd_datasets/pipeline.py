@@ -57,12 +57,34 @@ URLS: dict[str, str] = {
 
 
 @dataclass(frozen=True, slots=True)
+class ColumnSpec:
+    """One column of a wide table, and what it means.
+
+    Budget tables published here are frequently wide: the fiscal year and the
+    stage are in the column heading, not in a field, so a single row carries an
+    actual, two estimates and next year's estimate side by side. Reading such a
+    table needs a person to say, once, which column is which. Guessing from a
+    heading like ``_2022_2023_br`` is exactly the sort of inference that puts a
+    budget estimate in the actuals column.
+    """
+
+    field: str
+    fy: str
+    stage: str
+    is_cumulative: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class DatasetSpec:
     """A registered OGD resource and how to read it.
 
     ``unit`` is mandatory. The whole point of registering a dataset rather than
     crawling the catalogue is that a human has looked at it once and written
     down what its numbers mean.
+
+    Two table shapes are supported. Long tables name one amount field and one
+    fiscal-year field. Wide tables leave those unset and declare ``columns``
+    instead.
     """
 
     resource_id: str
@@ -71,14 +93,64 @@ class DatasetSpec:
     stage: str
     unit: Unit
     entity_field: str
-    amount_field: str
+    amount_field: str = ""
     fy_field: str | None = None
     is_cumulative: bool = False
+    #: Wide tables only. When set, ``amount_field`` and ``fy_field`` are unused.
+    columns: tuple[ColumnSpec, ...] = ()
+    #: Wide tables only. Normalised row labels to keep. A national summary table
+    #: holds receipts, deficits and ratios alongside the expenditure line, and
+    #: ingesting all of them as if they were the same quantity would be wrong in
+    #: several directions at once. Empty means every row.
+    keep_rows: tuple[str, ...] = ()
+    #: Fixed entity id, for a table whose rows are one known aggregate rather
+    #: than a list of named organisations. Skips alias resolution, which has
+    #: nothing to resolve.
+    entity_id: str | None = None
+
+    @property
+    def is_wide(self) -> bool:
+        return bool(self.columns)
+
+
+#: The national aggregate's entity id, matching NATIONAL_ENTITY_ID in
+#: packages/core. Written out rather than imported: this is Python and that is
+#: TypeScript, and the pair is pinned by a test.
+NATIONAL_ENTITY_ID = "india"
 
 
 #: Registered resources. Adding one is a deliberate act: docs/03 requires a
 #: licence note and an entry before any pipeline reads it.
 DATASETS: dict[str, DatasetSpec] = {
+    # Budget at a Glance, the one-page summary of the Union Budget, published by
+    # the Ministry of Finance. Wide, and in the standard four-column layout that
+    # every Budget at a Glance has used for years:
+    #
+    #     Actuals 2021-22 | Budget 2022-23 | Revised 2022-23 | Budget 2023-24
+    #
+    # which is how `_2022_2023_br` is read as that year's Budget Estimate. The
+    # figures confirm it: 39,44,909 crore is the published 2022-23 BE for total
+    # expenditure.
+    #
+    # Only the total expenditure line is taken. The same table carries receipts,
+    # three deficits and their GDP ratios, and those are not expenditure however
+    # much they look like comparable numbers.
+    "budget_at_a_glance": DatasetSpec(
+        resource_id="9f60de19-bf93-4ec9-83a4-2b0cf00479d1",
+        title="Budget at a Glance, Union Budget 2021-22 to 2023-24",
+        entity_type="national",
+        entity_id=NATIONAL_ENTITY_ID,
+        stage="BE",
+        unit=CRORE,
+        entity_field="si__no_________parameters",
+        keep_rows=("9 total expenditure 10 13",),
+        columns=(
+            ColumnSpec(field="_2021_2022_actuals", fy="FY2022", stage="EXPENDITURE"),
+            ColumnSpec(field="_2022_2023_br", fy="FY2023", stage="BE"),
+            ColumnSpec(field="_2022_2023_re", fy="FY2023", stage="RE"),
+            ColumnSpec(field="_2023_2024_be", fy="FY2024", stage="BE"),
+        ),
+    ),
     "ministry_wise_expenditure": DatasetSpec(
         # Placeholder resource id. data.gov.in resource ids are opaque UUIDs and
         # must be filled in from the portal before this dataset is enabled.
@@ -152,6 +224,12 @@ def parse_resource_payload(
     rows: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
 
+    if spec.is_wide:
+        wide_rows, wide_errors = _parse_wide_records(
+            records, spec, dataset_name=dataset_name, updated=updated
+        )
+        return wide_rows, wide_errors, field_names
+
     for index, record in enumerate(records):
         entity = str(record.get(spec.entity_field, "")).strip()
         if not entity:
@@ -206,6 +284,93 @@ def parse_resource_payload(
     return rows, errors, field_names
 
 
+def _parse_wide_records(
+    records: list[Any],
+    spec: DatasetSpec,
+    *,
+    dataset_name: str,
+    updated: date | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """One row per (record, declared column) for a wide table.
+
+    A declared column that is missing from the response is an error, not a
+    skip. These tables are republished each February with the years shifted
+    along, and a silently absent column would quietly stop ingesting a stage
+    while the run still reported success.
+    """
+    rows: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    wanted = set(spec.keep_rows)
+    matched_any = False
+
+    for index, record in enumerate(records):
+        label = str(record.get(spec.entity_field, "")).strip()
+        normalised = normalise_org_name(label)
+        if wanted and normalised not in wanted:
+            continue
+        matched_any = True
+
+        for column in spec.columns:
+            if column.field not in record:
+                errors.append(
+                    {
+                        "reason": (
+                            f"Declared column {column.field!r} is absent from the response. The "
+                            f"table has been republished with different columns and the dataset "
+                            f"registration needs revisiting."
+                        ),
+                        "stage_hint": column.stage,
+                        "raw_context": {"record_index": index, "fields": sorted(record)},
+                    }
+                )
+                continue
+            try:
+                amount = parse_amount_cr(str(record.get(column.field, "")), unit_hint=spec.unit)
+            except AmountParseError as exc:
+                errors.append(
+                    {
+                        "reason": str(exc),
+                        "stage_hint": column.stage,
+                        "raw_context": {"record": record, "field": column.field},
+                    }
+                )
+                continue
+            if not isinstance(amount, Decimal):
+                continue
+            rows.append(
+                {
+                    "dataset": dataset_name,
+                    "entity_raw": label,
+                    "entity_normalised": normalised,
+                    "fy": column.fy,
+                    "stage": column.stage,
+                    "amount_inr_cr": amount,
+                    "is_cumulative": column.is_cumulative,
+                    "updated_date": updated,
+                }
+            )
+
+    if wanted and not matched_any:
+        # The row we came for is gone. Reported rather than returning an empty
+        # result, which the drift check would otherwise have to guess at.
+        errors.append(
+            {
+                "reason": (
+                    f"None of the rows this dataset selects were found. Expected one of: "
+                    f"{', '.join(sorted(wanted))}."
+                ),
+                "stage_hint": spec.stage,
+                "raw_context": {
+                    "labels_seen": [
+                        str(record.get(spec.entity_field, "")) for record in records[:25]
+                    ]
+                },
+            }
+        )
+
+    return rows, errors
+
+
 def _resolve_fy(value: str, default_fy: str | None) -> str | None:
     if value:
         if is_fy(value):
@@ -227,7 +392,9 @@ def to_facts(
     facts: list[FiscalFactRow] = []
     unresolved: list[dict[str, Any]] = []
     for row in rows:
-        entity_id = aliases.get(row.entity_normalised)
+        # A national aggregate is one known entity, not a name to look up. The
+        # alias table has nothing to say about "Total Expenditure".
+        entity_id = spec.entity_id or aliases.get(row.entity_normalised)
         if entity_id is None:
             unresolved.append(
                 {
